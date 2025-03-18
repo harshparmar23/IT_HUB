@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const UserSchema = new mongoose.Schema(
     {
-        clerkId: { type: String, unique: true }, // Clerk ID (nullable initially)
+        clerkId: { type: String }, // Clerk ID (nullable initially)
         email: { type: String, required: true, unique: true }, // Must be pre-registered
         name: { type: String }, // Updated after first sign-in
         profileImage: { type: String }, // Profile picture URL (updated after first sign-in)
