@@ -16,26 +16,22 @@ export const API_ENDPOINTS = {
     delete: (id: string) => `${API_BASE_URL}/courses/${id}`,
   },
 
-  // Student endpoints
-  students: {
-    list: `${API_BASE_URL}/students`,
-    create: `${API_BASE_URL}/students`,
-    update: (id: string) => `${API_BASE_URL}/students/${id}`,
-    delete: (id: string) => `${API_BASE_URL}/students/${id}`,
-  },
-
   // Faculty endpoints
   faculty: {
-    list: `${API_BASE_URL}/faculty`,
-    create: `${API_BASE_URL}/faculty`,
-    update: (id: string) => `${API_BASE_URL}/faculty/${id}`,
-    delete: (id: string) => `${API_BASE_URL}/faculty/${id}`,
-    dashboard: (userId: string) =>
-      `${API_BASE_URL}/faculty/dashboard/${userId}`,
+    profile: (userId: string) => `${API_BASE_URL}/faculty/profile/${userId}`,
     materials: (facultyId: string) =>
       `${API_BASE_URL}/faculty/materials/${facultyId}`,
     papers: (facultyId: string) =>
       `${API_BASE_URL}/faculty/papers/${facultyId}`,
+    dashboard: (userId: string) =>
+      `${API_BASE_URL}/faculty/dashboard/${userId}`,
+  },
+
+  // Student endpoints
+  students: {
+    profile: (userId: string) => `${API_BASE_URL}/students/profile/${userId}`,
+    dashboard: (userId: string) =>
+      `${API_BASE_URL}/students/dashboard/${userId}`,
   },
 
   // Admin endpoints
