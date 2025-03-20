@@ -9,7 +9,9 @@
       "baseUrl": ".",
       "paths": {
         "@/*": ["./src/*"]
-      }
+      },
+      "skipLibCheck": true, 
+      "noEmit": false
     }
   
   
