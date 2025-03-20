@@ -14,7 +14,6 @@ import {
   Clock,
   GraduationCap,
   Loader2,
-  BarChart3,
 } from "lucide-react";
 import { API_ENDPOINTS } from "../config/api";
 
