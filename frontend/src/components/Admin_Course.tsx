@@ -40,7 +40,7 @@ const Admin_Course = () => {
   const fetchCourses = async () => {
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_REACT_BACKEND_BASIC_URL}/api/courses`
+        `${import.meta.env.VITE_BACKEND_BASE_URL}/courses`
       );
       if (!response.ok) throw new Error("Failed to fetch courses");
 
@@ -70,7 +70,7 @@ const Admin_Course = () => {
     setIsSubmitting(true);
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_REACT_BACKEND_BASIC_URL}/api/courses`,
+        `${import.meta.env.VITE_BACKEND_BASE_URL}/courses`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

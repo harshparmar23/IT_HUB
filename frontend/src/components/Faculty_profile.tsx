@@ -34,9 +34,7 @@ const Faculty_profile = () => {
         const token = await getToken();
 
         const response = await fetch(
-          `${
-            import.meta.env.VITE_REACT_BACKEND_BASIC_URL
-          }/api/faculty/profile/${userId}`,
+          `${import.meta.env.VITE_BACKEND_BASE_URL}/faculty/profile/${userId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
