@@ -54,7 +54,9 @@ const Admin_Student = () => {
   useEffect(() => {
     const fetchStudents = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/students");
+        const response = await fetch(
+          "https://it-hub-iota.vercel.app/api/students"
+        );
         if (!response.ok) throw new Error("Failed to fetch students");
 
         const data = await response.json();
@@ -88,11 +90,14 @@ const Admin_Student = () => {
     if (!email.trim()) return;
 
     try {
-      const response = await fetch("http://localhost:5000/api/students", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
+      const response = await fetch(
+        "https://it-hub-iota.vercel.app/api/students",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        }
+      );
 
       const data = await response.json();
       if (!response.ok)
@@ -132,7 +137,7 @@ const Admin_Student = () => {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/students/${selectedStudent._id}`,
+        `https://it-hub-iota.vercel.app/api/students/${selectedStudent._id}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -176,7 +181,7 @@ const Admin_Student = () => {
     setIsDeleting(true);
     try {
       const response = await fetch(
-        `http://localhost:5000/api/students/${studentToDelete._id}`,
+        `https://it-hub-iota.vercel.app/api/students/${studentToDelete._id}`,
         {
           method: "DELETE",
         }
