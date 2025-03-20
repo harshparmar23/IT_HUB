@@ -6,6 +6,7 @@ import authRoutes from "./routes/authRoutes.js";
 import courseRoutes from "./routes/courseRoutes.js";
 import studentRoutes from "./routes/studentRoutes.js";
 import facultyRoutes from "./routes/facultyRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 import { upload } from "./config/cloudinary.js";
 
 dotenv.config();
@@ -23,6 +24,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/courses", courseRoutes); // Use course routes
 app.use("/api/students", studentRoutes);
 app.use("/api/faculty", facultyRoutes);
+app.use("/api/admin", adminRoutes);
 
 // File upload endpoint
 app.post("/api/upload", upload.single("file"), (req, res) => {

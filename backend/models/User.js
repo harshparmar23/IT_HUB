@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from "mongoose"
 
 const UserSchema = new mongoose.Schema(
     {
@@ -16,16 +16,17 @@ const UserSchema = new mongoose.Schema(
             type: Date,
             default: Date.now, // Default to current date
         },
-        courseId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Course",
-            required: function () {
-                return this.role === "faculty"; // Make courseId required only if user is faculty
+        // Changed from single courseId to array of courseIds
+        courseIds: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "Course",
             },
-        },
+        ],
     },
-    { timestamps: true }
-);
+    { timestamps: true },
+)
 
-const User = mongoose.model("User", UserSchema);
-export default User;
+const User = mongoose.model("User", UserSchema)
+export default User
+

@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { useAuth, useUser } from "@clerk/clerk-react";
+import React, { useState, useEffect } from "react";
+import { useAuth } from "@clerk/clerk-react";
+import axios from "axios";
 import {
   Card,
   CardContent,
@@ -8,78 +9,97 @@ import {
   CardTitle,
 } from "./ui/card";
 import {
-  Loader2,
   Users,
   GraduationCap,
-  FileText,
   BookOpen,
-  User,
-  Mail,
-  Calendar,
-  Shield,
+  FileText,
+  Loader2,
 } from "lucide-react";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 interface DashboardStats {
-  students: number;
-  faculty: number;
-  materials: number;
-  papers: number;
-  courses: number;
+  totalStudents: number;
+  totalFaculty: number;
+  totalCourses: number;
+  totalMaterials: number;
+  totalPapers: number;
 }
 
-const AdminDashboard = () => {
-  const { isSignedIn, getToken } = useAuth();
-  const { user: clerkUser } = useUser();
-  const [user, setUser] = useState<any>(null);
-  const [stats, setStats] = useState({
-    students: 0,
-    faculty: 0,
-    materials: 0,
-    papers: 0,
-    courses: 0,
-  });
+interface RecentFaculty {
+  _id: string;
+  name: string;
+  email: string;
+  courses: string;
+  createdAt: string;
+}
+
+interface RecentMaterial {
+  _id: string;
+  name: string;
+  facultyName: string;
+  courseName: string;
+  createdAt: string;
+}
+
+interface RecentPaper {
+  _id: string;
+  name: string;
+  facultyName: string;
+  courseName: string;
+  year: number;
+  createdAt: string;
+}
+
+interface CourseDistribution {
+  _id: string;
+  name: string;
+  facultyCount: number;
+}
+
+const AdminDashboard: React.FC = () => {
+  const { userId, getToken } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats>({
+    totalStudents: 0,
+    totalFaculty: 0,
+    totalCourses: 0,
+    totalMaterials: 0,
+    totalPapers: 0,
+  });
+  const [recentFaculty, setRecentFaculty] = useState<RecentFaculty[]>([]);
+  const [recentMaterials, setRecentMaterials] = useState<RecentMaterial[]>([]);
+  const [recentPapers, setRecentPapers] = useState<RecentPaper[]>([]);
+  const [courseDistribution, setCourseDistribution] = useState<
+    CourseDistribution[]
+  >([]);
 
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchDashboardData = async () => {
       try {
         setLoading(true);
         const token = await getToken();
 
-        // Fetch both user and stats data
-        const [userResponse, statsResponse] = await Promise.all([
-          fetch("http://localhost:5000/api/auth/get-user", {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          }),
-          fetch("http://localhost:5000/api/stats/dashboard-stats", {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          }),
-        ]);
+        const response = await axios.get(`${API_URL}/api/admin/dashboard`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-        const userData = await userResponse.json();
-        const statsData = await statsResponse.json();
-
-        setUser(userData.user);
-        if (statsData.success) {
-          setStats(statsData.stats);
-        }
+        setStats(response.data.stats);
+        setRecentFaculty(response.data.recentFaculty);
+        setRecentMaterials(response.data.recentMaterials);
+        setRecentPapers(response.data.recentPapers);
+        setCourseDistribution(response.data.courseDistribution);
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Error fetching dashboard data:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    if (isSignedIn) fetchUserData();
-  }, [isSignedIn, getToken]);
+    if (userId) {
+      fetchDashboardData();
+    }
+  }, [userId, getToken]);
 
   if (loading) {
     return (
@@ -90,267 +110,184 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-md">
-          {user ? (
-            <p className="font-medium">Welcome, {user.name}</p>
-          ) : (
-            <p>Loading user...</p>
-          )}
-        </div>
-      </div>
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-6">Admin Dashboard</h1>
 
-      {/* Admin Profile Card */}
-      {user && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Admin Profile</CardTitle>
-            <CardDescription>Your account information</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col md:flex-row gap-6">
-              <div className="flex-shrink-0">
-                <div className="w-32 h-32 rounded-full bg-blue-100 flex items-center justify-center">
-                  {clerkUser?.imageUrl ? (
-                    <img
-                      src={clerkUser.imageUrl}
-                      alt={user.name}
-                      className="w-full h-full rounded-full object-cover"
-                    />
-                  ) : (
-                    <User className="h-16 w-16 text-blue-600" />
-                  )}
-                </div>
-              </div>
-              <div className="space-y-4 flex-1">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground flex items-center">
-                      <User className="mr-2 h-4 w-4" />
-                      Full Name
-                    </p>
-                    <p className="font-medium">{user.name || "Not provided"}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground flex items-center">
-                      <Mail className="mr-2 h-4 w-4" />
-                      Email Address
-                    </p>
-                    <p className="font-medium">
-                      {user.email || "Not provided"}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground flex items-center">
-                      <Shield className="mr-2 h-4 w-4" />
-                      Role
-                    </p>
-                    <p className="font-medium capitalize">
-                      {user.role || "Admin"}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground flex items-center">
-                      <Calendar className="mr-2 h-4 w-4" />
-                      Joined
-                    </p>
-                    <p className="font-medium">
-                      {user.createdAt
-                        ? new Date(user.createdAt).toLocaleDateString("en-US", {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          })
-                        : "Not available"}
-                    </p>
-                  </div>
-                </div>
-                <div className="pt-2 border-t">
-                  <p className="text-sm text-muted-foreground">
-                    As an administrator, you have full access to manage
-                    students, faculty, courses, materials, and previous year
-                    papers across the platform.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Total Students
             </CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.students}</div>
-            <p className="text-xs text-muted-foreground">
-              Enrolled in various courses
-            </p>
+            <div className="text-2xl font-bold">{stats.totalStudents}</div>
+            <p className="text-xs text-muted-foreground">Registered students</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">
-              Faculty Members
-            </CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Faculty</CardTitle>
             <GraduationCap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.faculty}</div>
-            <p className="text-xs text-muted-foreground">
-              Teaching across departments
-            </p>
+            <div className="text-2xl font-bold">{stats.totalFaculty}</div>
+            <p className="text-xs text-muted-foreground">Teaching faculty</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Courses</CardTitle>
+            <BookOpen className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalCourses}</div>
+            <p className="text-xs text-muted-foreground">Available courses</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Course Materials
+              Total Materials
             </CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.materials}</div>
-            <p className="text-xs text-muted-foreground">
-              Uploaded learning resources
-            </p>
+            <div className="text-2xl font-bold">{stats.totalMaterials}</div>
+            <p className="text-xs text-muted-foreground">Uploaded materials</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">
-              Previous Papers
-            </CardTitle>
-            <BookOpen className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Papers</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.papers}</div>
+            <div className="text-2xl font-bold">{stats.totalPapers}</div>
             <p className="text-xs text-muted-foreground">
-              Past examination papers
+              Previous year papers
             </p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      {/* Recent Activity Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Recent Faculty */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>
-              Latest actions across the platform
-            </CardDescription>
+            <CardTitle>Recent Faculty</CardTitle>
+            <CardDescription>Latest registered faculty members</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center gap-4 border-b pb-4">
-                <div className="bg-blue-100 p-2 rounded-full">
-                  <FileText className="h-4 w-4 text-blue-600" />
-                </div>
-                <div>
-                  <p className="font-medium">New Material Uploaded</p>
-                  <p className="text-sm text-muted-foreground">
-                    Prof. Johnson uploaded "Advanced Algorithms Notes"
+              {recentFaculty.map((faculty) => (
+                <div
+                  key={faculty._id}
+                  className="flex items-center justify-between"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{faculty.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {faculty.courses}
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(faculty.createdAt).toLocaleDateString()}
                   </p>
                 </div>
-                <div className="ml-auto text-xs text-muted-foreground">
-                  2 hours ago
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4 border-b pb-4">
-                <div className="bg-green-100 p-2 rounded-full">
-                  <Users className="h-4 w-4 text-green-600" />
-                </div>
-                <div>
-                  <p className="font-medium">New Student Registered</p>
-                  <p className="text-sm text-muted-foreground">
-                    Sarah Parker joined Computer Science
-                  </p>
-                </div>
-                <div className="ml-auto text-xs text-muted-foreground">
-                  5 hours ago
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <div className="bg-amber-100 p-2 rounded-full">
-                  <BookOpen className="h-4 w-4 text-amber-600" />
-                </div>
-                <div>
-                  <p className="font-medium">Previous Paper Added</p>
-                  <p className="text-sm text-muted-foreground">
-                    2023 Midterm Exam for Database Systems
-                  </p>
-                </div>
-                <div className="ml-auto text-xs text-muted-foreground">
-                  Yesterday
-                </div>
-              </div>
+              ))}
             </div>
           </CardContent>
         </Card>
 
+        {/* Recent Materials */}
         <Card>
           <CardHeader>
-            <CardTitle>System Status</CardTitle>
-            <CardDescription>
-              Current system performance metrics
-            </CardDescription>
+            <CardTitle>Recent Materials</CardTitle>
+            <CardDescription>Latest uploaded materials</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-sm font-medium">Server Uptime</p>
-                  <p className="text-sm text-muted-foreground">99.9%</p>
+              {recentMaterials.map((material) => (
+                <div
+                  key={material._id}
+                  className="flex items-center justify-between"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{material.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {material.facultyName} - {material.courseName}
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(material.createdAt).toLocaleDateString()}
+                  </p>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className="bg-green-500 h-2 rounded-full"
-                    style={{ width: "99.9%" }}
-                  ></div>
-                </div>
-              </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-sm font-medium">Database Load</p>
-                  <p className="text-sm text-muted-foreground">42%</p>
+        {/* Recent Papers */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Papers</CardTitle>
+            <CardDescription>Latest uploaded papers</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {recentPapers.map((paper) => (
+                <div
+                  key={paper._id}
+                  className="flex items-center justify-between"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{paper.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {paper.facultyName} - {paper.courseName} ({paper.year})
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(paper.createdAt).toLocaleDateString()}
+                  </p>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className="bg-blue-500 h-2 rounded-full"
-                    style={{ width: "42%" }}
-                  ></div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-sm font-medium">Storage Usage</p>
-                  <p className="text-sm text-muted-foreground">68%</p>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className="bg-amber-500 h-2 rounded-full"
-                    style={{ width: "68%" }}
-                  ></div>
-                </div>
-              </div>
+              ))}
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Course Distribution */}
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>Course Distribution</CardTitle>
+          <CardDescription>
+            Number of faculty members per course
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {courseDistribution.map((course) => (
+              <div
+                key={course._id}
+                className="flex items-center justify-between"
+              >
+                <p className="text-sm font-medium">{course.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {course.facultyCount} faculty members
+                </p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

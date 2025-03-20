@@ -1,5 +1,8 @@
 import express from "express";
 import User from "../models/User.js";// Import User model
+import Course from "../models/Course.js";
+import Material from "../models/Material.js";
+import PreviousYearPaper from "../models/PreviousYearPaper.js";
 
 const router = express.Router();
 
@@ -116,6 +119,88 @@ router.delete("/:id", async (req, res) => {
     } catch (error) {
         console.error("Error deleting student:", error);
         res.status(500).json({ message: "Error deleting student" });
+    }
+});
+
+/**
+ * @route GET /api/students/dashboard/:userId
+ * @desc Get student dashboard data
+ */
+router.get("/dashboard/:userId", async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        // Get student profile with enrolled courses
+        const student = await User.findOne({ clerkId: userId, role: "student" })
+            .populate("courseIds", "name description");
+
+        if (!student) {
+            return res.status(404).json({ message: "Student not found" });
+        }
+
+        // Get materials for enrolled courses
+        const materials = await Material.find({
+            courseId: { $in: student.courseIds }
+        })
+            .populate("facultyId", "name")
+            .populate("courseId", "name")
+            .sort({ createdAt: -1 })
+            .limit(5);
+
+        // Get papers for enrolled courses
+        const papers = await PreviousYearPaper.find({
+            courseId: { $in: student.courseIds }
+        })
+            .populate("facultyId", "name")
+            .populate("courseId", "name")
+            .sort({ createdAt: -1 })
+            .limit(5);
+
+        // Get course progress (materials and papers count per course)
+        const courseProgress = await Promise.all(
+            student.courseIds.map(async (course) => {
+                const [materialsCount, papersCount] = await Promise.all([
+                    Material.countDocuments({ courseId: course._id }),
+                    PreviousYearPaper.countDocuments({ courseId: course._id })
+                ]);
+
+                return {
+                    courseId: course._id,
+                    courseName: course.name,
+                    materialsCount,
+                    papersCount
+                };
+            })
+        );
+
+        // Format the response
+        const response = {
+            student: {
+                name: student.name,
+                email: student.email,
+                enrolledCourses: student.courseIds.map(course => ({
+                    id: course._id,
+                    name: course.name,
+                    description: course.description
+                }))
+            },
+            recentMaterials: materials.map(material => ({
+                ...material.toObject(),
+                facultyName: material.facultyId ? material.facultyId.name : "Unknown",
+                courseName: material.courseId ? material.courseId.name : "Not Assigned"
+            })),
+            recentPapers: papers.map(paper => ({
+                ...paper.toObject(),
+                facultyName: paper.facultyId ? paper.facultyId.name : "Unknown",
+                courseName: paper.courseId ? paper.courseId.name : "Not Assigned"
+            })),
+            courseProgress
+        };
+
+        res.json(response);
+    } catch (error) {
+        console.error("Error fetching student dashboard data:", error);
+        res.status(500).json({ message: "Error fetching student dashboard data" });
     }
 });
 

@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@clerk/clerk-react";
+import axios from "axios";
 import {
   Card,
   CardContent,
@@ -7,181 +8,287 @@ import {
   CardHeader,
   CardTitle,
 } from "./ui/card";
-import { Loader2, BookOpen, FileText, User } from "lucide-react";
+import {
+  BookOpen,
+  FileText,
+  GraduationCap,
+  Loader2,
+  BarChart3,
+} from "lucide-react";
 
-const StudentDashboard = () => {
-  const { isSignedIn, getToken } = useAuth();
-  const [user, setUser] = useState<any>(null);
-  const [stats, setStats] = useState({
-    materials: 0,
-    papers: 0,
-    courses: 0,
-  });
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+interface EnrolledCourse {
+  id: string;
+  name: string;
+  description: string;
+}
+
+interface Student {
+  name: string;
+  email: string;
+  enrolledCourses: EnrolledCourse[];
+}
+
+interface RecentMaterial {
+  _id: string;
+  name: string;
+  facultyName: string;
+  courseName: string;
+  createdAt: string;
+}
+
+interface RecentPaper {
+  _id: string;
+  name: string;
+  facultyName: string;
+  courseName: string;
+  year: number;
+  createdAt: string;
+}
+
+interface CourseProgress {
+  courseId: string;
+  courseName: string;
+  materialsCount: number;
+  papersCount: number;
+}
+
+const StudentDashboard: React.FC = () => {
+  const { userId, getToken } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [student, setStudent] = useState<Student | null>(null);
+  const [recentMaterials, setRecentMaterials] = useState<RecentMaterial[]>([]);
+  const [recentPapers, setRecentPapers] = useState<RecentPaper[]>([]);
+  const [courseProgress, setCourseProgress] = useState<CourseProgress[]>([]);
 
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchDashboardData = async () => {
       try {
         setLoading(true);
         const token = await getToken();
-        const response = await fetch(
-          "http://localhost:5000/api/auth/get-user",
+
+        const response = await axios.get(
+          `${API_URL}/api/students/dashboard/${userId}`,
           {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
+            headers: { Authorization: `Bearer ${token}` },
           }
         );
 
-        const data = await response.json();
-
-        if (!data.user) {
-          console.error("User not found");
-          return;
-        }
-
-        setUser(data.user);
-
-        // Mock stats - in a real app, you would fetch these from your API
-        setStats({
-          materials: 24,
-          papers: 18,
-          courses: 5,
-        });
+        setStudent(response.data.student);
+        setRecentMaterials(response.data.recentMaterials);
+        setRecentPapers(response.data.recentPapers);
+        setCourseProgress(response.data.courseProgress);
       } catch (error) {
-        console.error("Error fetching user:", error);
+        console.error("Error fetching dashboard data:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    if (isSignedIn) fetchUserData();
-  }, [isSignedIn, getToken]);
+    if (userId) {
+      fetchDashboardData();
+    }
+  }, [userId, getToken]);
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Welcome Card */}
-      <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-        <CardContent className="p-6">
-          <h2 className="text-2xl font-bold mb-2">Welcome to IT Hub</h2>
-          <p className="opacity-90">
-            Access course materials, previous year papers, and more from your
-            student dashboard.
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Stats Cards */}
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">
-              Available Materials
-            </CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.materials}</div>
-            <p className="text-xs text-muted-foreground">
-              Course notes, slides, and resources
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">
-              Previous Papers
-            </CardTitle>
-            <BookOpen className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.papers}</div>
-            <p className="text-xs text-muted-foreground">
-              Past examination papers
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Your Courses</CardTitle>
-            <User className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.courses}</div>
-            <p className="text-xs text-muted-foreground">
-              Enrolled courses this semester
-            </p>
-          </CardContent>
-        </Card>
+    <div className="container mx-auto p-6 max-w-7xl">
+      {/* Welcome Section */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          Welcome back,{" "}
+          <span className="text-blue-600 dark:text-blue-400">
+            {student?.name}
+          </span>
+        </h1>
+        <p className="mt-2 text-gray-600 dark:text-gray-400">
+          Here's what's happening with your courses
+        </p>
       </div>
 
-      {/* Quick Links */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Links</CardTitle>
-          <CardDescription>Frequently accessed resources</CardDescription>
+      {/* Enrolled Courses */}
+      <Card className="mb-8 shadow-lg hover:shadow-xl transition-shadow duration-300">
+        <CardHeader className="border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
+                Your Enrolled Courses
+              </CardTitle>
+              <CardDescription className="mt-2 text-gray-600 dark:text-gray-400">
+                Courses you are currently enrolled in
+              </CardDescription>
+            </div>
+            <GraduationCap className="h-8 w-8 text-blue-500" />
+          </div>
         </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
-            <a
-              href="/student-dashboard/material"
-              className="flex items-center p-3 rounded-lg border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-colors"
-            >
-              <div className="mr-3 bg-blue-100 p-2 rounded-full">
-                <FileText className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="font-medium">Course Materials</h3>
-                <p className="text-sm text-muted-foreground">
-                  Access lecture notes and resources
-                </p>
-              </div>
-            </a>
-
-            <a
-              href="/student-dashboard/previous-papers"
-              className="flex items-center p-3 rounded-lg border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-colors"
-            >
-              <div className="mr-3 bg-amber-100 p-2 rounded-full">
-                <BookOpen className="h-5 w-5 text-amber-600" />
-              </div>
-              <div>
-                <h3 className="font-medium">Previous Year Papers</h3>
-                <p className="text-sm text-muted-foreground">
-                  Practice with past exams
-                </p>
-              </div>
-            </a>
-
-            <a
-              href="/student-dashboard/profile"
-              className="flex items-center p-3 rounded-lg border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-colors"
-            >
-              <div className="mr-3 bg-green-100 p-2 rounded-full">
-                <User className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <h3 className="font-medium">Your Profile</h3>
-                <p className="text-sm text-muted-foreground">
-                  View and update your information
-                </p>
-              </div>
-            </a>
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {student?.enrolledCourses.map((course) => (
+              <Card
+                key={course.id}
+                className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 
+                         shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200 
+                         dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400"
+              >
+                <CardHeader className="p-4">
+                  <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {course.name}
+                  </CardTitle>
+                  <CardDescription className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                    {course.description}
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            ))}
           </div>
         </CardContent>
       </Card>
+
+      {/* Course Progress */}
+      <Card className="mb-8 shadow-lg hover:shadow-xl transition-shadow duration-300">
+        <CardHeader className="border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
+                Course Progress
+              </CardTitle>
+              <CardDescription className="mt-2 text-gray-600 dark:text-gray-400">
+                Available materials and papers for each course
+              </CardDescription>
+            </div>
+            <BarChart3 className="h-8 w-8 text-blue-500" />
+          </div>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {courseProgress.map((progress) => (
+              <Card
+                key={progress.courseId}
+                className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 
+                         shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200 
+                         dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400"
+              >
+                <CardHeader className="p-4">
+                  <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {progress.courseName}
+                  </CardTitle>
+                  <CardDescription className="mt-4 space-y-3">
+                    <div className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <span className="flex items-center text-gray-700 dark:text-gray-300">
+                        <BookOpen className="h-5 w-5 mr-2 text-blue-500" />
+                        Materials
+                      </span>
+                      <span className="font-semibold text-blue-600 dark:text-blue-400">
+                        {progress.materialsCount}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <span className="flex items-center text-gray-700 dark:text-gray-300">
+                        <FileText className="h-5 w-5 mr-2 text-blue-500" />
+                        Papers
+                      </span>
+                      <span className="font-semibold text-blue-600 dark:text-blue-400">
+                        {progress.papersCount}
+                      </span>
+                    </div>
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Recent Activity Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Recent Materials */}
+        <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <CardHeader className="border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Recent Materials
+                </CardTitle>
+                <CardDescription className="mt-2 text-gray-600 dark:text-gray-400">
+                  Latest materials for your courses
+                </CardDescription>
+              </div>
+              <BookOpen className="h-8 w-8 text-blue-500" />
+            </div>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              {recentMaterials.map((material) => (
+                <div
+                  key={material._id}
+                  className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 
+                           rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {material.name}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                      {material.facultyName} - {material.courseName}
+                    </p>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-500">
+                    {new Date(material.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Papers */}
+        <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <CardHeader className="border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Recent Papers
+                </CardTitle>
+                <CardDescription className="mt-2 text-gray-600 dark:text-gray-400">
+                  Latest papers for your courses
+                </CardDescription>
+              </div>
+              <FileText className="h-8 w-8 text-blue-500" />
+            </div>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              {recentPapers.map((paper) => (
+                <div
+                  key={paper._id}
+                  className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 
+                           rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {paper.name}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                      {paper.facultyName} - {paper.courseName} ({paper.year})
+                    </p>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-500">
+                    {new Date(paper.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

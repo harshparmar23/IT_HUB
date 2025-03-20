@@ -18,13 +18,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../components/ui/select";
+import { Badge } from "../components/ui/badge";
+import { Checkbox } from "../components/ui/checkbox";
+import { Label } from "../components/ui/label";
+import { ScrollArea } from "../components/ui/scroll-area";
 
 interface Faculty {
   _id: string;
@@ -32,8 +29,9 @@ interface Faculty {
   name?: string;
   profileImage?: string;
   experience: number;
-  courseName: string;
-  joinDate?: string; // Changed from createdAt to joinDate
+  courseNames: string;
+  courses: Course[];
+  joinDate?: string;
 }
 
 interface Course {
@@ -49,15 +47,20 @@ const Admin_Faculty = () => {
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState<string>("");
   const [open, setOpen] = useState<boolean>(false);
-  const [selectedCourse, setSelectedCourse] = useState<string>("");
+  const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
   const [newJoinDate, setNewJoinDate] = useState<string>("");
   const [courses, setCourses] = useState<Course[]>([]);
 
   // Edit faculty state
   const [editDialogOpen, setEditDialogOpen] = useState<boolean>(false);
   const [selectedFaculty, setSelectedFaculty] = useState<Faculty | null>(null);
-  const [editCourseId, setEditCourseId] = useState<string>("");
+  const [editCourseIds, setEditCourseIds] = useState<string[]>([]);
   const [editJoinDate, setEditJoinDate] = useState<string>("");
+
+  // Delete confirmation dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
+  const [facultyToDelete, setFacultyToDelete] = useState<Faculty | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   useEffect(() => {
     fetchFaculty();
@@ -66,6 +69,7 @@ const Admin_Faculty = () => {
 
   const fetchFaculty = async () => {
     try {
+      setLoading(true);
       const response = await fetch("http://localhost:5000/api/faculty");
       if (!response.ok) throw new Error("Failed to fetch faculty members");
 
@@ -106,8 +110,13 @@ const Admin_Faculty = () => {
   };
 
   const addFaculty = async () => {
-    if (!email.trim() || !selectedCourse) {
-      alert("Email and course selection are required");
+    if (!email.trim() || selectedCourses.length === 0) {
+      alert("Email and at least one course selection are required");
+      return;
+    }
+
+    if (selectedCourses.length > 4) {
+      alert("Faculty can be assigned maximum 4 courses");
       return;
     }
 
@@ -117,7 +126,7 @@ const Admin_Faculty = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email,
-          courseId: selectedCourse,
+          courseIds: selectedCourses,
           joinDate: newJoinDate || undefined,
         }),
       });
@@ -129,10 +138,11 @@ const Admin_Faculty = () => {
       setFaculty([...faculty, data.faculty]);
       setFilteredFaculty([...faculty, data.faculty]);
       setEmail("");
-      setSelectedCourse("");
+      setSelectedCourses([]);
       setNewJoinDate("");
       setOpen(false);
       alert("Faculty member added successfully!");
+      fetchFaculty(); // Refresh the list to get populated course names
     } catch (error: any) {
       alert(error.message);
     }
@@ -161,11 +171,12 @@ const Admin_Faculty = () => {
 
   const openEditDialog = (fac: Faculty) => {
     setSelectedFaculty(fac);
-    // Find the current course ID
-    const currentCourse = courses.find(
-      (course) => course.name === fac.courseName
-    );
-    setEditCourseId(currentCourse?._id || "");
+
+    // Get the current course IDs
+    const currentCourseIds = fac.courses
+      ? fac.courses.map((course) => course._id)
+      : [];
+    setEditCourseIds(currentCourseIds);
 
     // Format the date for the input (YYYY-MM-DD)
     const joinDate = new Date(fac.joinDate || Date.now());
@@ -179,8 +190,13 @@ const Admin_Faculty = () => {
     if (!selectedFaculty) return;
 
     // Validate that at least one field is changed
-    if (!editCourseId && !editJoinDate) {
-      alert("Please change either the course or the join date");
+    if (editCourseIds.length === 0) {
+      alert("Please select at least one course");
+      return;
+    }
+
+    if (editCourseIds.length > 4) {
+      alert("Faculty can be assigned maximum 4 courses");
       return;
     }
 
@@ -191,7 +207,7 @@ const Admin_Faculty = () => {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            courseId: editCourseId || undefined,
+            courseIds: editCourseIds,
             joinDate: editJoinDate || undefined,
           }),
         }
@@ -216,6 +232,16 @@ const Admin_Faculty = () => {
     } catch (error: any) {
       alert(error.message);
     }
+  };
+
+  const handleCourseSelection = (courseId: string) => {
+    setEditCourseIds((prev) => {
+      if (prev.includes(courseId)) {
+        return prev.filter((id) => id !== courseId);
+      } else {
+        return [...prev, courseId];
+      }
+    });
   };
 
   return (
@@ -288,23 +314,39 @@ const Admin_Faculty = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Assigned Course
+                  Assigned Courses (Select 1-4)
                 </label>
-                <Select
-                  value={selectedCourse}
-                  onValueChange={(value) => setSelectedCourse(value)}
-                >
-                  <SelectTrigger className="w-full border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    <SelectValue placeholder="Select a course" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {courses.map((course) => (
-                      <SelectItem key={course._id} value={course._id}>
+                <div className="border border-gray-300 rounded-md p-3 max-h-40 overflow-y-auto">
+                  {courses.map((course) => (
+                    <div
+                      key={course._id}
+                      className="flex items-center space-x-2 mb-2"
+                    >
+                      <Checkbox
+                        id={`course-${course._id}`}
+                        checked={selectedCourses.includes(course._id)}
+                        onCheckedChange={(checked: any) => {
+                          if (checked) {
+                            setSelectedCourses([
+                              ...selectedCourses,
+                              course._id,
+                            ]);
+                          } else {
+                            setSelectedCourses(
+                              selectedCourses.filter((id) => id !== course._id)
+                            );
+                          }
+                        }}
+                      />
+                      <Label htmlFor={`course-${course._id}`}>
                         {course.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Selected: {selectedCourses.length}/4
+                </p>
               </div>
 
               <div>
@@ -417,29 +459,34 @@ const Admin_Faculty = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Assigned Course
+                Assigned Courses (Select 1-4)
               </label>
               <p className="text-xs text-gray-500 mb-1">
-                Current course:{" "}
+                Current courses:{" "}
                 <span className="font-medium text-gray-700">
-                  {selectedFaculty?.courseName || "Not Assigned"}
+                  {selectedFaculty?.courseNames || "Not Assigned"}
                 </span>
               </p>
-              <Select
-                value={editCourseId}
-                onValueChange={(value) => setEditCourseId(value)}
-              >
-                <SelectTrigger className="w-full border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                  <SelectValue placeholder="Select a course" />
-                </SelectTrigger>
-                <SelectContent>
-                  {courses.map((course) => (
-                    <SelectItem key={course._id} value={course._id}>
+              <ScrollArea className="h-40 border border-gray-300 rounded-md p-3">
+                {courses.map((course) => (
+                  <div
+                    key={course._id}
+                    className="flex items-center space-x-2 mb-2"
+                  >
+                    <Checkbox
+                      id={`edit-course-${course._id}`}
+                      checked={editCourseIds.includes(course._id)}
+                      onCheckedChange={() => handleCourseSelection(course._id)}
+                    />
+                    <Label htmlFor={`edit-course-${course._id}`}>
                       {course.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    </Label>
+                  </div>
+                ))}
+              </ScrollArea>
+              <p className="text-xs text-gray-500 mt-1">
+                Selected: {editCourseIds.length}/4
+              </p>
             </div>
 
             <div>
@@ -501,7 +548,7 @@ const Admin_Faculty = () => {
                   Experience
                 </TableHead>
                 <TableHead className="w-1/6 py-3 px-4 text-gray-700">
-                  Course
+                  Courses
                 </TableHead>
                 <TableHead className="w-1/6 py-3 px-4 text-gray-700">
                   Join Date
@@ -535,9 +582,21 @@ const Admin_Faculty = () => {
                     </span>
                   </TableCell>
                   <TableCell className="py-3 px-4 text-sm">
-                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
-                      {fac.courseName}
-                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {fac.courses && fac.courses.length > 0 ? (
+                        fac.courses.map((course) => (
+                          <Badge
+                            key={course._id}
+                            variant="outline"
+                            className="bg-green-100 text-green-800 border-green-200"
+                          >
+                            {course.name}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-gray-500">Not Assigned</span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="py-3 px-4 text-sm">
                     {new Date(fac.joinDate || "").toLocaleDateString()}
@@ -545,7 +604,7 @@ const Admin_Faculty = () => {
                   <TableCell className="py-3 px-4">
                     {fac.profileImage ? (
                       <img
-                        src={fac.profileImage}
+                        src={fac.profileImage || "/placeholder.svg"}
                         alt="Profile"
                         className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
                       />

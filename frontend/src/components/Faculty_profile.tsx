@@ -1,5 +1,13 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/clerk-react";
+import { Badge } from "./ui/badge";
+
+interface Course {
+  _id: string;
+  name: string;
+}
 
 interface FacultyProfile {
   _id: string;
@@ -7,7 +15,7 @@ interface FacultyProfile {
   email: string;
   profileImage: string;
   role: string;
-  courseName: string;
+  courses: Course[];
   experience: number;
   createdAt: string;
   updatedAt: string;
@@ -107,16 +115,30 @@ const Faculty_profile = () => {
             </div>
 
             <div className="bg-gray-50 p-3 rounded">
-              <h3 className="text-sm font-medium text-gray-500">Course</h3>
-              <p className="text-gray-800">{profile.courseName}</p>
-            </div>
-
-            <div className="bg-gray-50 p-3 rounded">
               <h3 className="text-sm font-medium text-gray-500">Experience</h3>
               <p className="text-gray-800">
                 {profile.experience}{" "}
                 {profile.experience === 1 ? "year" : "years"}
               </p>
+            </div>
+
+            <div className="bg-gray-50 p-3 rounded md:col-span-2">
+              <h3 className="text-sm font-medium text-gray-500">Courses</h3>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {profile.courses && profile.courses.length > 0 ? (
+                  profile.courses.map((course) => (
+                    <Badge
+                      key={course._id}
+                      variant="outline"
+                      className="bg-blue-100 text-blue-800 border-blue-200"
+                    >
+                      {course.name}
+                    </Badge>
+                  ))
+                ) : (
+                  <p className="text-gray-800">No courses assigned</p>
+                )}
+              </div>
             </div>
 
             <div className="bg-gray-50 p-3 rounded">

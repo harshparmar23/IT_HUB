@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@clerk/clerk-react";
+import axios from "axios";
 import {
   Card,
   CardContent,
@@ -8,225 +9,283 @@ import {
   CardTitle,
 } from "./ui/card";
 import {
-  Loader2,
   BookOpen,
   FileText,
-  User,
+  Clock,
   GraduationCap,
-  MessageSquare,
+  Loader2,
+  BarChart3,
 } from "lucide-react";
 
-interface FacultyProfile {
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+interface Faculty {
   _id: string;
   name: string;
   email: string;
-  profileImage: string;
-  role: string;
-  courseName: string;
-  experience: number;
-  createdAt: string;
-  updatedAt: string;
+  joinDate: string;
+  courses: {
+    _id: string;
+    name: string;
+    description: string;
+  }[];
 }
 
-const FacultyDashboard = () => {
-  const { isSignedIn, getToken, userId } = useAuth();
-  const [profile, setProfile] = useState<FacultyProfile | null>(null);
-  const [stats, setStats] = useState({
-    materials: 0,
-    papers: 0,
-    students: 0,
-  });
+interface Material {
+  _id: string;
+  name: string;
+  courseName: string;
+  createdAt: string;
+}
+
+interface Paper {
+  _id: string;
+  name: string;
+  courseName: string;
+  year: number;
+  createdAt: string;
+}
+
+interface DashboardStats {
+  totalMaterials: number;
+  totalPapers: number;
+  totalCourses: number;
+}
+
+const Faculty_Dashboard: React.FC = () => {
+  const { userId, getToken } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [faculty, setFaculty] = useState<Faculty | null>(null);
+  const [materials, setMaterials] = useState<Material[]>([]);
+  const [papers, setPapers] = useState<Paper[]>([]);
+  const [stats, setStats] = useState<DashboardStats>({
+    totalMaterials: 0,
+    totalPapers: 0,
+    totalCourses: 0,
+  });
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchDashboardData = async () => {
       try {
         setLoading(true);
         const token = await getToken();
 
-        // Fetch faculty profile
-        const response = await fetch(
-          `http://localhost:5000/api/faculty/profile/${userId}`,
+        const response = await axios.get(
+          `${API_URL}/api/faculty/dashboard/${userId}`,
           {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
+            headers: { Authorization: `Bearer ${token}` },
           }
         );
 
-        const data = await response.json();
-
-        if (data.faculty) {
-          setProfile(data.faculty);
-        }
-
-        // Mock stats - in a real app, you would fetch these from your API
-        setStats({
-          materials: 12,
-          papers: 8,
-          students: 45,
-        });
+        setFaculty(response.data.faculty);
+        setMaterials(response.data.materials || []);
+        setPapers(response.data.papers || []);
+        setStats(response.data.stats);
       } catch (error) {
-        console.error("Error fetching faculty data:", error);
+        console.error("Error fetching dashboard data:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    if (isSignedIn && userId) fetchData();
-  }, [isSignedIn, getToken, userId]);
+    if (userId) {
+      fetchDashboardData();
+    }
+  }, [userId, getToken]);
+
+  const formatExperience = (joinDate: string) => {
+    const join = new Date(joinDate);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - join.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffYears = diffDays / 365;
+
+    if (diffYears < 1) {
+      return "Less than a year";
+    }
+    return `${Math.floor(diffYears)} ${
+      Math.floor(diffYears) === 1 ? "year" : "years"
+    }`;
+  };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Welcome Card */}
-      <Card className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
-        <CardContent className="p-6">
-          <h2 className="text-2xl font-bold mb-2">Welcome to Faculty Portal</h2>
-          <p className="opacity-90">
-            Manage your course materials, upload previous year papers, and
-            interact with students.
-          </p>
-          {profile && (
-            <div className="mt-4 pt-4 border-t border-white/20">
-              <p className="font-medium">
-                You are teaching: {profile.courseName || "Not assigned yet"}
-              </p>
-              <p className="text-sm opacity-90">
-                Experience: {profile.experience} years
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+    <div className="container mx-auto p-6 max-w-7xl">
+      {/* Welcome Section */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          Welcome back,{" "}
+          <span className="text-blue-600 dark:text-blue-400">
+            {faculty?.name}
+          </span>
+        </h1>
+        <p className="mt-2 text-gray-600 dark:text-gray-400">
+          Here's an overview of your teaching activities
+        </p>
+      </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">
               Your Materials
             </CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+            <BookOpen className="h-5 w-5 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.materials}</div>
-            <p className="text-xs text-muted-foreground">
-              Course notes and resources uploaded
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">
+              {stats.totalMaterials}
+            </div>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Total materials uploaded
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">
+        <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">
               Previous Papers
             </CardTitle>
-            <BookOpen className="h-4 w-4 text-muted-foreground" />
+            <FileText className="h-5 w-5 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.papers}</div>
-            <p className="text-xs text-muted-foreground">
-              Past examination papers shared
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">
+              {stats.totalPapers}
+            </div>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Total papers uploaded
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Students</CardTitle>
-            <GraduationCap className="h-4 w-4 text-muted-foreground" />
+        <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">
+              Experience
+            </CardTitle>
+            <Clock className="h-5 w-5 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.students}</div>
-            <p className="text-xs text-muted-foreground">
-              Students enrolled in your course
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">
+              {faculty?.joinDate ? formatExperience(faculty.joinDate) : "N/A"}
+            </div>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Years of teaching experience
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">
+              Teaching Courses
+            </CardTitle>
+            <GraduationCap className="h-5 w-5 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">
+              {stats.totalCourses}
+            </div>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Currently assigned courses
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Quick Links */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>Frequently used faculty tools</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
-            <a
-              href="/faculty-dashboard/material"
-              className="flex items-center p-3 rounded-lg border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-colors"
-            >
-              <div className="mr-3 bg-blue-100 p-2 rounded-full">
-                <FileText className="h-5 w-5 text-blue-600" />
-              </div>
+      {/* Recent Activity Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Recent Materials */}
+        <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <CardHeader className="border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-medium">Upload Materials</h3>
-                <p className="text-sm text-muted-foreground">
-                  Share course notes and resources
-                </p>
+                <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Recent Materials
+                </CardTitle>
+                <CardDescription className="mt-2 text-gray-600 dark:text-gray-400">
+                  Your latest uploaded materials
+                </CardDescription>
               </div>
-            </a>
+              <BookOpen className="h-8 w-8 text-blue-500" />
+            </div>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              {materials.map((material) => (
+                <div
+                  key={material._id}
+                  className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 
+                           rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {material.name}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                      {material.courseName}
+                    </p>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-500">
+                    {new Date(material.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
-            <a
-              href="/faculty-dashboard/previous-papers"
-              className="flex items-center p-3 rounded-lg border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-colors"
-            >
-              <div className="mr-3 bg-amber-100 p-2 rounded-full">
-                <BookOpen className="h-5 w-5 text-amber-600" />
-              </div>
+        {/* Recent Papers */}
+        <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <CardHeader className="border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-medium">Upload Previous Papers</h3>
-                <p className="text-sm text-muted-foreground">
-                  Share past examination papers
-                </p>
+                <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Recent Papers
+                </CardTitle>
+                <CardDescription className="mt-2 text-gray-600 dark:text-gray-400">
+                  Your latest uploaded papers
+                </CardDescription>
               </div>
-            </a>
-
-            <a
-              href="/faculty-dashboard/profile"
-              className="flex items-center p-3 rounded-lg border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-colors"
-            >
-              <div className="mr-3 bg-green-100 p-2 rounded-full">
-                <User className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <h3 className="font-medium">Your Profile</h3>
-                <p className="text-sm text-muted-foreground">
-                  View and update your information
-                </p>
-              </div>
-            </a>
-
-            <a
-              href="/faculty-dashboard/chat"
-              className="flex items-center p-3 rounded-lg border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-colors"
-            >
-              <div className="mr-3 bg-purple-100 p-2 rounded-full">
-                <MessageSquare className="h-5 w-5 text-purple-600" />
-              </div>
-              <div>
-                <h3 className="font-medium">Student Chat</h3>
-                <p className="text-sm text-muted-foreground">
-                  Communicate with your students
-                </p>
-              </div>
-            </a>
-          </div>
-        </CardContent>
-      </Card>
+              <FileText className="h-8 w-8 text-blue-500" />
+            </div>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              {papers.map((paper) => (
+                <div
+                  key={paper._id}
+                  className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 
+                           rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {paper.name}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                      {paper.courseName} ({paper.year})
+                    </p>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-500">
+                    {new Date(paper.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
 
-export default FacultyDashboard;
+export default Faculty_Dashboard;

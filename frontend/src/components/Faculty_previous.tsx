@@ -1,4 +1,7 @@
-import React, { useState, useEffect } from "react";
+"use client";
+
+import type React from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@clerk/clerk-react";
 import axios from "axios";
 import { Button } from "./ui/button";
@@ -19,6 +22,13 @@ import {
   TableHeader,
   TableRow,
 } from "./ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 import { Loader2, Upload, Trash2 } from "lucide-react";
 
 // Simple toast implementation
@@ -48,10 +58,17 @@ interface Paper {
 interface Faculty {
   _id: string;
   name: string;
-  courseId?: {
+  courses: {
     _id: string;
     name: string;
-  };
+    description: string;
+  }[];
+}
+
+interface Course {
+  _id: string;
+  name: string;
+  description: string;
 }
 
 const Faculty_previous: React.FC = () => {
@@ -60,42 +77,52 @@ const Faculty_previous: React.FC = () => {
   const [uploading, setUploading] = useState<boolean>(false);
   const [papers, setPapers] = useState<Paper[]>([]);
   const [faculty, setFaculty] = useState<Faculty | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    year: new Date().getFullYear(),
     fileUrl: "",
+    courseId: "",
+    year: "",
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  // Fetch faculty data
+  // Fetch faculty data and all courses
   useEffect(() => {
-    const fetchFacultyData = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         const token = await getToken();
-        const response = await axios.get(
+
+        // Fetch faculty data
+        const facultyResponse = await axios.get(
           `${API_URL}/api/faculty/profile/${userId}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
-        setFaculty(response.data.faculty);
+        setFaculty(facultyResponse.data.faculty);
+
+        // Fetch all courses
+        const coursesResponse = await axios.get(`${API_URL}/api/courses`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setCourses(coursesResponse.data.courses || []);
 
         // Fetch papers for this faculty
-        if (response.data.faculty._id) {
-          fetchPapers(response.data.faculty._id);
+        if (facultyResponse.data.faculty._id) {
+          fetchPapers(facultyResponse.data.faculty._id);
         }
       } catch (error) {
-        console.error("Error fetching faculty data:", error);
-        toast.error("Failed to load faculty data");
+        console.error("Error fetching data:", error);
+        toast.error("Failed to load data");
       } finally {
         setLoading(false);
       }
     };
 
     if (userId) {
-      fetchFacultyData();
+      fetchData();
     }
   }, [userId, getToken]);
 
@@ -124,6 +151,11 @@ const Faculty_previous: React.FC = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Handle course selection
+  const handleCourseChange = (courseId: string) => {
+    setFormData((prev) => ({ ...prev, courseId }));
+  };
+
   // Handle file upload
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -141,9 +173,10 @@ const Faculty_previous: React.FC = () => {
       !formData.name ||
       !formData.description ||
       !selectedFile ||
-      !formData.year
+      !formData.year ||
+      !formData.courseId
     ) {
-      toast.error("Please fill all fields and upload a file");
+      toast.error("Please fill all fields, select a course, and upload a file");
       return;
     }
 
@@ -176,9 +209,10 @@ const Faculty_previous: React.FC = () => {
         `${API_URL}/api/faculty/papers`,
         {
           facultyId: faculty._id,
+          courseId: formData.courseId,
           name: formData.name,
           description: formData.description,
-          year: parseInt(formData.year.toString(), 10),
+          year: Number.parseInt(formData.year.toString(), 10),
           fileUrl: uploadResponse.data.fileUrl,
         },
         {
@@ -192,8 +226,9 @@ const Faculty_previous: React.FC = () => {
       setFormData({
         name: "",
         description: "",
-        year: new Date().getFullYear(),
+        year: "",
         fileUrl: "",
+        courseId: "",
       });
       setSelectedFile(null);
 
@@ -251,27 +286,40 @@ const Faculty_previous: React.FC = () => {
           <CardHeader>
             <CardTitle>Upload New Paper</CardTitle>
             <CardDescription>
-              Upload previous year papers for your course:{" "}
-              {faculty.courseId?.name || "Not Assigned"}
+              Upload previous year papers for any course
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label
-                  htmlFor="name"
+                  htmlFor="courseId"
                   className="block text-sm font-medium mb-1"
                 >
-                  Paper Name
+                  Select Course
                 </label>
-                <Input
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="Enter paper name (e.g. Midterm Exam 2023)"
+                <Select
+                  value={formData.courseId}
+                  onValueChange={handleCourseChange}
                   required
-                />
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a course" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {courses.length > 0 ? (
+                      courses.map((course) => (
+                        <SelectItem key={course._id} value={course._id}>
+                          {course.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>
+                        No courses available
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
@@ -285,11 +333,26 @@ const Faculty_previous: React.FC = () => {
                   id="year"
                   name="year"
                   type="number"
-                  min="2000"
-                  max={new Date().getFullYear()}
                   value={formData.year}
                   onChange={handleChange}
-                  placeholder="Enter year"
+                  placeholder="Enter year (e.g., 2023)"
+                  required
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="name"
+                  className="block text-sm font-medium mb-1"
+                >
+                  Paper Name
+                </label>
+                <Input
+                  id="name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="Enter paper name"
                   required
                 />
               </div>
@@ -363,9 +426,9 @@ const Faculty_previous: React.FC = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Year</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>Course</TableHead>
+                  <TableHead>Year</TableHead>
                   <TableHead>Upload Date</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -373,12 +436,10 @@ const Faculty_previous: React.FC = () => {
               <TableBody>
                 {papers.map((paper) => (
                   <TableRow key={paper._id}>
-                    <TableCell className="font-medium">{paper.name}</TableCell>
-                    <TableCell>{paper.year}</TableCell>
-                    <TableCell className="max-w-xs truncate">
-                      {paper.description}
-                    </TableCell>
+                    <TableCell>{paper.name}</TableCell>
+                    <TableCell>{paper.description}</TableCell>
                     <TableCell>{paper.courseName}</TableCell>
+                    <TableCell>{paper.year}</TableCell>
                     <TableCell>
                       {new Date(paper.createdAt).toLocaleDateString()}
                     </TableCell>

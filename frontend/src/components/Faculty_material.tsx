@@ -1,4 +1,7 @@
-import React, { useState, useEffect } from "react";
+"use client";
+
+import type React from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@clerk/clerk-react";
 import axios from "axios";
 import { Button } from "./ui/button";
@@ -8,7 +11,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "./ui/card";
@@ -20,6 +22,13 @@ import {
   TableHeader,
   TableRow,
 } from "./ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 import { Loader2, Upload, Trash2 } from "lucide-react";
 
 // Since react-hot-toast might not be installed, we'll create a simple toast implementation
@@ -48,10 +57,17 @@ interface Material {
 interface Faculty {
   _id: string;
   name: string;
-  courseId?: {
+  courses: {
     _id: string;
     name: string;
-  };
+    description: string;
+  }[];
+}
+
+interface Course {
+  _id: string;
+  name: string;
+  description: string;
 }
 
 const Faculty_material: React.FC = () => {
@@ -60,41 +76,51 @@ const Faculty_material: React.FC = () => {
   const [uploading, setUploading] = useState<boolean>(false);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [faculty, setFaculty] = useState<Faculty | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     fileUrl: "",
+    courseId: "",
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  // Fetch faculty data
+  // Fetch faculty data and all courses
   useEffect(() => {
-    const fetchFacultyData = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         const token = await getToken();
-        const response = await axios.get(
+
+        // Fetch faculty data
+        const facultyResponse = await axios.get(
           `${API_URL}/api/faculty/profile/${userId}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
-        setFaculty(response.data.faculty);
+        setFaculty(facultyResponse.data.faculty);
+
+        // Fetch all courses
+        const coursesResponse = await axios.get(`${API_URL}/api/courses`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setCourses(coursesResponse.data.courses || []);
 
         // Fetch materials for this faculty
-        if (response.data.faculty._id) {
-          fetchMaterials(response.data.faculty._id);
+        if (facultyResponse.data.faculty._id) {
+          fetchMaterials(facultyResponse.data.faculty._id);
         }
       } catch (error) {
-        console.error("Error fetching faculty data:", error);
-        toast.error("Failed to load faculty data");
+        console.error("Error fetching data:", error);
+        toast.error("Failed to load data");
       } finally {
         setLoading(false);
       }
     };
 
     if (userId) {
-      fetchFacultyData();
+      fetchData();
     }
   }, [userId, getToken]);
 
@@ -123,6 +149,11 @@ const Faculty_material: React.FC = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Handle course selection
+  const handleCourseChange = (courseId: string) => {
+    setFormData((prev) => ({ ...prev, courseId }));
+  };
+
   // Handle file upload
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -136,8 +167,13 @@ const Faculty_material: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.description || !selectedFile) {
-      toast.error("Please fill all fields and upload a file");
+    if (
+      !formData.name ||
+      !formData.description ||
+      !selectedFile ||
+      !formData.courseId
+    ) {
+      toast.error("Please fill all fields, select a course, and upload a file");
       return;
     }
 
@@ -170,6 +206,7 @@ const Faculty_material: React.FC = () => {
         `${API_URL}/api/faculty/materials`,
         {
           facultyId: faculty._id,
+          courseId: formData.courseId,
           name: formData.name,
           description: formData.description,
           fileUrl: uploadResponse.data.fileUrl,
@@ -186,6 +223,7 @@ const Faculty_material: React.FC = () => {
         name: "",
         description: "",
         fileUrl: "",
+        courseId: "",
       });
       setSelectedFile(null);
 
@@ -242,13 +280,41 @@ const Faculty_material: React.FC = () => {
         <Card className="mb-8">
           <CardHeader>
             <CardTitle>Upload New Material</CardTitle>
-            <CardDescription>
-              Upload materials for your course:{" "}
-              {faculty.courseId?.name || "Not Assigned"}
-            </CardDescription>
+            <CardDescription>Upload materials for any course</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label
+                  htmlFor="courseId"
+                  className="block text-sm font-medium mb-1"
+                >
+                  Select Course
+                </label>
+                <Select
+                  value={formData.courseId}
+                  onValueChange={handleCourseChange}
+                  required
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a course" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {courses.length > 0 ? (
+                      courses.map((course) => (
+                        <SelectItem key={course._id} value={course._id}>
+                          {course.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>
+                        No courses available
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div>
                 <label
                   htmlFor="name"
@@ -344,9 +410,7 @@ const Faculty_material: React.FC = () => {
               <TableBody>
                 {materials.map((material) => (
                   <TableRow key={material._id}>
-                    <TableCell className="font-medium">
-                      {material.name}
-                    </TableCell>
+                    <TableCell>{material.name}</TableCell>
                     <TableCell>{material.description}</TableCell>
                     <TableCell>{material.courseName}</TableCell>
                     <TableCell>

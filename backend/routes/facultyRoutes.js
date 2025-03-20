@@ -1,132 +1,142 @@
-import express from "express";
-import User from "../models/User.js"; // Import the User model
-import Material from "../models/Material.js"; // Import the Material model
-import Course from "../models/Course.js"; // Import the Course model
-import PreviousYearPaper from "../models/PreviousYearPaper.js"; // Import the PreviousYearPaper model
+import express from "express"
+import User from "../models/User.js" // Import the User model
+import Material from "../models/Material.js" // Import the Material model
+import Course from "../models/Course.js" // Import the Course model
+import PreviousYearPaper from "../models/PreviousYearPaper.js" // Import the PreviousYearPaper model
 
-const router = express.Router();
+const router = express.Router()
 
 router.get("/", async (req, res) => {
     try {
         const faculty = await User.find({ role: "faculty" })
-            .populate("courseId", "name") // Populate course name
-            .select("-__v");
+            .populate("courseIds", "name") // Populate course names
+            .select("-__v")
 
         const facultyWithExperience = faculty.map((fac) => {
-            const joinDate = fac.joinDate || fac.createdAt; // Use joinDate if available, fallback to createdAt
-            const yearsOfExperience = Math.floor(
-                (Date.now() - new Date(joinDate).getTime()) / (1000 * 60 * 60 * 24 * 365)
-            );
+            const joinDate = fac.joinDate || fac.createdAt // Use joinDate if available, fallback to createdAt
+            const yearsOfExperience = Math.floor((Date.now() - new Date(joinDate).getTime()) / (1000 * 60 * 60 * 24 * 365))
+
+            // Format course names as a comma-separated string
+            const courseNames =
+                fac.courseIds && fac.courseIds.length > 0
+                    ? fac.courseIds.map((course) => course.name).join(", ")
+                    : "Not Assigned"
 
             return {
                 ...fac.toObject(),
                 experience: yearsOfExperience,
-                courseName: fac.courseId ? fac.courseId.name : "Not Assigned",
-            };
-        });
+                courseNames: courseNames,
+                courses: fac.courseIds || [],
+            }
+        })
 
-        res.json({ faculty: facultyWithExperience });
+        res.json({ faculty: facultyWithExperience })
     } catch (error) {
-        res.status(500).json({ message: "Error fetching faculty members" });
+        res.status(500).json({ message: "Error fetching faculty members" })
     }
-});
+})
 
 /**
  * @route GET /api/faculty/profile
  * @desc Get faculty profile by clerkId
  */
-router.get("/profile/:clerkId", async (req, res) => {
+router.get("/profile/:userId", async (req, res) => {
     try {
-        const { clerkId } = req.params;
-
-        const faculty = await User.findOne({
-            clerkId,
-            role: "faculty"
-        }).populate("courseId", "name");
+        const { userId } = req.params;
+        const faculty = await User.findOne({ clerkId: userId, role: "faculty" })
+            .populate("courseIds", "name description") // Populate course details
+            .select("-__v");
 
         if (!faculty) {
             return res.status(404).json({ message: "Faculty not found" });
         }
 
-        const joinDate = faculty.joinDate || faculty.createdAt; // Use joinDate if available, fallback to createdAt
-        const yearsOfExperience = Math.floor(
-            (Date.now() - new Date(joinDate).getTime()) / (1000 * 60 * 60 * 24 * 365)
-        );
-
-        const facultyProfile = {
-            ...faculty.toObject(),
-            experience: yearsOfExperience,
-            courseName: faculty.courseId ? faculty.courseId.name : "Not Assigned"
+        // Format the response to include courses
+        const response = {
+            faculty: {
+                ...faculty.toObject(),
+                courses: faculty.courseIds || [],
+            },
         };
 
-        res.json({ faculty: facultyProfile });
+        res.json(response);
     } catch (error) {
         console.error("Error fetching faculty profile:", error);
         res.status(500).json({ message: "Error fetching faculty profile" });
     }
-});
+})
 
 /**
  * @route PUT /api/faculty/:id
- * @desc Update faculty course and/or joinDate
+ * @desc Update faculty courses and/or joinDate
  */
 router.put("/:id", async (req, res) => {
     try {
-        const { id } = req.params;
-        const { courseId, joinDate } = req.body;
+        const { id } = req.params
+        const { courseIds, joinDate } = req.body
 
         // Validate inputs
-        if (!courseId && !joinDate) {
-            return res.status(400).json({ message: "Either courseId or joinDate must be provided" });
+        if (!courseIds && !joinDate) {
+            return res.status(400).json({ message: "Either courseIds or joinDate must be provided" })
+        }
+
+        // Validate course count if provided
+        if (courseIds && (courseIds.length < 1 || courseIds.length > 4)) {
+            return res.status(400).json({ message: "Faculty must be assigned between 1 and 4 courses" })
         }
 
         // Find faculty by ID
-        const faculty = await User.findById(id);
+        const faculty = await User.findById(id)
         if (!faculty) {
-            return res.status(404).json({ message: "Faculty not found" });
+            return res.status(404).json({ message: "Faculty not found" })
         }
 
         // Update fields if provided
-        if (courseId) {
-            faculty.courseId = courseId;
+        if (courseIds) {
+            faculty.courseIds = courseIds
         }
 
         if (joinDate) {
             // Validate date format
-            const dateObj = new Date(joinDate);
+            const dateObj = new Date(joinDate)
             if (isNaN(dateObj.getTime())) {
-                return res.status(400).json({ message: "Invalid date format" });
+                return res.status(400).json({ message: "Invalid date format" })
             }
 
             // Update the joinDate field
-            faculty.joinDate = dateObj;
+            faculty.joinDate = dateObj
         }
 
         // Save the updated faculty
-        await faculty.save();
+        await faculty.save()
 
-        // Fetch the updated faculty with populated course
-        const updatedFaculty = await User.findById(id).populate("courseId", "name");
+        // Fetch the updated faculty with populated courses
+        const updatedFaculty = await User.findById(id).populate("courseIds", "name")
 
         // Calculate experience based on the (potentially) new joinDate
-        const joinDateToUse = updatedFaculty.joinDate || updatedFaculty.createdAt;
-        const yearsOfExperience = Math.floor(
-            (Date.now() - new Date(joinDateToUse).getTime()) / (1000 * 60 * 60 * 24 * 365)
-        );
+        const joinDateToUse = updatedFaculty.joinDate || updatedFaculty.createdAt
+        const yearsOfExperience = Math.floor((Date.now() - new Date(joinDateToUse).getTime()) / (1000 * 60 * 60 * 24 * 365))
+
+        // Format course names
+        const courseNames =
+            updatedFaculty.courseIds && updatedFaculty.courseIds.length > 0
+                ? updatedFaculty.courseIds.map((course) => course.name).join(", ")
+                : "Not Assigned"
 
         // Return the updated faculty with calculated fields
         const facultyResponse = {
             ...updatedFaculty.toObject(),
             experience: yearsOfExperience,
-            courseName: updatedFaculty.courseId ? updatedFaculty.courseId.name : "Not Assigned"
-        };
+            courseNames: courseNames,
+            courses: updatedFaculty.courseIds || [],
+        }
 
-        res.json({ faculty: facultyResponse, message: "Faculty updated successfully" });
+        res.json({ faculty: facultyResponse, message: "Faculty updated successfully" })
     } catch (error) {
-        console.error("Error updating faculty:", error);
-        res.status(500).json({ message: "Error updating faculty" });
+        console.error("Error updating faculty:", error)
+        res.status(500).json({ message: "Error updating faculty" })
     }
-});
+})
 
 /**
  * @route POST /api/faculty
@@ -134,55 +144,60 @@ router.put("/:id", async (req, res) => {
  */
 router.post("/", async (req, res) => {
     try {
-        const { email, courseId, joinDate } = req.body;
-        if (!email || !courseId) return res.status(400).json({ message: "Email and Course are required" });
+        const { email, courseIds, joinDate } = req.body
+        if (!email || !courseIds || !Array.isArray(courseIds) || courseIds.length === 0) {
+            return res.status(400).json({ message: "Email and at least one course are required" })
+        }
+
+        // Validate course count
+        if (courseIds.length > 4) {
+            return res.status(400).json({ message: "Faculty can be assigned maximum 4 courses" })
+        }
 
         // Check if the email already exists
-        const existingUser = await User.findOne({ email });
-        if (existingUser) return res.status(400).json({ message: "Faculty already exists" });
+        const existingUser = await User.findOne({ email })
+        if (existingUser) return res.status(400).json({ message: "Faculty already exists" })
 
         // Create new faculty with optional joinDate
         const newFaculty = new User({
             email,
             role: "faculty",
-            courseId,
-            ...(joinDate && { joinDate: new Date(joinDate) })
-        });
+            courseIds,
+            ...(joinDate && { joinDate: new Date(joinDate) }),
+        })
 
-        await newFaculty.save();
+        await newFaculty.save()
 
         // Calculate experience
-        const joinDateToUse = newFaculty.joinDate || newFaculty.createdAt;
-        const yearsOfExperience = Math.floor(
-            (Date.now() - new Date(joinDateToUse).getTime()) / (1000 * 60 * 60 * 24 * 365)
-        );
+        const joinDateToUse = newFaculty.joinDate || newFaculty.createdAt
+        const yearsOfExperience = Math.floor((Date.now() - new Date(joinDateToUse).getTime()) / (1000 * 60 * 60 * 24 * 365))
 
         // Return faculty with additional fields
         const facultyResponse = {
             ...newFaculty.toObject(),
             experience: yearsOfExperience,
-            courseName: "Not Populated" // Course name not populated in this response
-        };
+            courseNames: "Not Populated", // Course names not populated in this response
+        }
 
-        res.status(201).json({ faculty: facultyResponse });
+        res.status(201).json({ faculty: facultyResponse })
     } catch (error) {
-        console.error("Error adding faculty:", error);
-        res.status(500).json({ message: "Error adding faculty" });
+        console.error("Error adding faculty:", error)
+        res.status(500).json({ message: "Error adding faculty" })
     }
-});
+})
 
 router.delete("/:id", async (req, res) => {
     try {
-        const { id } = req.params;
-        const faculty = await User.findByIdAndDelete(id);
+        const { id } = req.params
+        const faculty = await User.findByIdAndDelete(id)
 
-        if (!faculty) return res.status(404).json({ message: "Faculty not found" });
+        if (!faculty) return res.status(404).json({ message: "Faculty not found" })
 
-        res.json({ message: "Faculty deleted successfully" });
+        res.json({ message: "Faculty deleted successfully" })
     } catch (error) {
-        res.status(500).json({ message: "Error deleting faculty member" });
+        res.status(500).json({ message: "Error deleting faculty member" })
     }
-});
+})
 
 /**
  * @route POST /api/faculty/materials
@@ -190,21 +205,27 @@ router.delete("/:id", async (req, res) => {
  */
 router.post("/materials", async (req, res) => {
     try {
-        const { facultyId, name, description, fileUrl } = req.body;
+        const { facultyId, name, description, fileUrl, courseId } = req.body;
 
         // Verify the faculty exists
-        const faculty = await User.findById(facultyId).populate("courseId");
+        const faculty = await User.findById(facultyId);
         if (!faculty || faculty.role !== "faculty") {
             return res.status(404).json({ message: "Faculty not found" });
         }
 
-        // Create new material with faculty's course ID
+        // Verify the course exists
+        const course = await Course.findById(courseId);
+        if (!course) {
+            return res.status(404).json({ message: "Course not found" });
+        }
+
+        // Create new material with specified course ID
         const material = new Material({
             facultyId: faculty._id,
-            courseId: faculty.courseId,
+            courseId,
             name,
             description,
-            fileUrl
+            fileUrl,
         });
 
         await material.save();
@@ -214,14 +235,20 @@ router.post("/materials", async (req, res) => {
             material: {
                 ...material.toObject(),
                 facultyName: faculty.name,
-                courseName: faculty.courseId ? faculty.courseId.name : "Not Assigned"
-            }
+                courseName: course.name,
+            },
         });
     } catch (error) {
         console.error("Error uploading material:", error);
         res.status(500).json({ message: "Error uploading material" });
     }
-});
+})
+
+// The rest of the routes remain the same...
+
+// export default router
+
+
 
 /**
  * @route GET /api/faculty/materials
@@ -342,18 +369,24 @@ router.put("/materials/:id", async (req, res) => {
  */
 router.post("/papers", async (req, res) => {
     try {
-        const { facultyId, name, description, year, fileUrl } = req.body;
+        const { facultyId, name, description, year, fileUrl, courseId } = req.body;
 
         // Verify the faculty exists
-        const faculty = await User.findById(facultyId).populate("courseId");
+        const faculty = await User.findById(facultyId);
         if (!faculty || faculty.role !== "faculty") {
             return res.status(404).json({ message: "Faculty not found" });
         }
 
-        // Create new previous year paper with faculty's course ID
+        // Verify the course exists
+        const course = await Course.findById(courseId);
+        if (!course) {
+            return res.status(404).json({ message: "Course not found" });
+        }
+
+        // Create new previous year paper
         const paper = new PreviousYearPaper({
             facultyId: faculty._id,
-            courseId: faculty.courseId,
+            courseId,
             name,
             description,
             year,
@@ -367,7 +400,7 @@ router.post("/papers", async (req, res) => {
             paper: {
                 ...paper.toObject(),
                 facultyName: faculty.name,
-                courseName: faculty.courseId ? faculty.courseId.name : "Not Assigned"
+                courseName: course.name
             }
         });
     } catch (error) {
@@ -487,6 +520,77 @@ router.delete("/papers/:id", async (req, res) => {
     } catch (error) {
         console.error("Error deleting previous year paper:", error);
         res.status(500).json({ message: "Error deleting previous year paper" });
+    }
+});
+
+/**
+ * @route GET /api/faculty/dashboard/:userId
+ * @desc Get faculty dashboard data
+ */
+router.get("/dashboard/:userId", async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        // Get faculty profile with courses
+        const faculty = await User.findOne({ clerkId: userId, role: "faculty" })
+            .populate("courseIds", "name description")
+            .select("-__v");
+
+        if (!faculty) {
+            return res.status(404).json({ message: "Faculty not found" });
+        }
+
+        // Get faculty's materials (both total count and recent)
+        const [totalMaterials, recentMaterials] = await Promise.all([
+            Material.countDocuments({ facultyId: faculty._id }),
+            Material.find({ facultyId: faculty._id })
+                .populate("courseId", "name")
+                .sort({ createdAt: -1 })
+                .limit(5)
+        ]);
+
+        // Get faculty's papers (both total count and recent)
+        const [totalPapers, recentPapers] = await Promise.all([
+            PreviousYearPaper.countDocuments({ facultyId: faculty._id }),
+            PreviousYearPaper.find({ facultyId: faculty._id })
+                .populate("courseId", "name")
+                .sort({ createdAt: -1 })
+                .limit(5)
+        ]);
+
+        // Calculate experience
+        const joinDate = faculty.joinDate || faculty.createdAt;
+        const yearsOfExperience = Math.floor(
+            (Date.now() - new Date(joinDate).getTime()) / (1000 * 60 * 60 * 24 * 365)
+        );
+
+        // Format the response
+        const response = {
+            faculty: {
+                ...faculty.toObject(),
+                courses: faculty.courseIds || [],
+                joinDate: joinDate,
+                experience: yearsOfExperience
+            },
+            stats: {
+                totalMaterials,
+                totalPapers,
+                totalCourses: faculty.courseIds?.length || 0
+            },
+            materials: recentMaterials.map(material => ({
+                ...material.toObject(),
+                courseName: material.courseId ? material.courseId.name : "Not Assigned"
+            })),
+            papers: recentPapers.map(paper => ({
+                ...paper.toObject(),
+                courseName: paper.courseId ? paper.courseId.name : "Not Assigned"
+            }))
+        };
+
+        res.json(response);
+    } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+        res.status(500).json({ message: "Error fetching dashboard data" });
     }
 });
 
