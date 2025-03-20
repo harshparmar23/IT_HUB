@@ -35,7 +35,8 @@ import {
   SelectValue,
 } from "./ui/select";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API_URL =
+  import.meta.env.VITE_API_URL || "https://it-hub-iota.vercel.app";
 
 interface Material {
   _id: string;
