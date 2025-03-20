@@ -14,10 +14,9 @@ import {
   Clock,
   GraduationCap,
   Loader2,
+  BarChart3,
 } from "lucide-react";
-
-const API_URL =
-  import.meta.env.VITE_API_URL || "https://it-hub-iota.vercel.app";
+import { API_ENDPOINTS } from "../config/api";
 
 interface Faculty {
   _id: string;
@@ -71,7 +70,7 @@ const Faculty_Dashboard: React.FC = () => {
         const token = await getToken();
 
         const response = await axios.get(
-          `${API_URL}/api/faculty/dashboard/${userId}`,
+          API_ENDPOINTS.faculty.dashboard(userId || ""),
           {
             headers: { Authorization: `Bearer ${token}` },
           }
