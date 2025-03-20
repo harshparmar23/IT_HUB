@@ -58,9 +58,9 @@ const Admin_Faculty = () => {
   const [editJoinDate, setEditJoinDate] = useState<string>("");
 
   // Delete confirmation dialog state
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
-  const [facultyToDelete, setFacultyToDelete] = useState<Faculty | null>(null);
-  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  // const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
+  // const [facultyToDelete, setFacultyToDelete] = useState<Faculty | null>(null);
+  // const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   useEffect(() => {
     fetchFaculty();

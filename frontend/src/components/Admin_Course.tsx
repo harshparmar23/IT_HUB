@@ -39,7 +39,9 @@ const Admin_Course = () => {
 
   const fetchCourses = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/courses");
+      const response = await fetch(
+        `${import.meta.env.VITE_REACT_BACKEND_BASIC_URL}/api/courses`
+      );
       if (!response.ok) throw new Error("Failed to fetch courses");
 
       const data = await response.json();
@@ -67,11 +69,14 @@ const Admin_Course = () => {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("http://localhost:5000/api/courses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newCourseName }),
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_REACT_BACKEND_BASIC_URL}/api/courses`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: newCourseName }),
+        }
+      );
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Failed to add course");

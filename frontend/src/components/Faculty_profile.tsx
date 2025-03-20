@@ -34,7 +34,9 @@ const Faculty_profile = () => {
         const token = await getToken();
 
         const response = await fetch(
-          `http://localhost:5000/api/faculty/profile/${userId}`,
+          `${
+            import.meta.env.VITE_REACT_BACKEND_BASIC_URL
+          }/api/faculty/profile/${userId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

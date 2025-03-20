@@ -6,7 +6,7 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-import { useAuth, SignedOut, SignInButton } from "@clerk/clerk-react";
+import { useAuth } from "@clerk/clerk-react";
 import { useEffect, useState } from "react";
 import Navbar from "./components/Navbar";
 import Chat from "./pages/Chat";
