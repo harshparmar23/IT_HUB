@@ -51,7 +51,7 @@ function App() {
         setLoading(true);
         const token = await getToken();
         const response = await fetch(
-          "https://it-hub-iota.vercel.app/api/auth/google-signin",
+          "http://localhost:5000/api/auth/google-signin",
           {
             method: "POST",
             headers: {

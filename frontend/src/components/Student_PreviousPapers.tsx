@@ -20,8 +20,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Loader2, Search, FileText, Download, Calendar } from "lucide-react";
 
-const API_URL =
-  import.meta.env.VITE_API_URL || "https://it-hub-iota.vercel.app";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 interface Paper {
   _id: string;

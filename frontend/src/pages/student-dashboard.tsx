@@ -15,7 +15,7 @@ const StudentDashboard = () => {
       try {
         const token = await getToken();
         const response = await fetch(
-          "https://it-hub-iota.vercel.app/api/auth/get-user",
+          "http://localhost:5000/api/auth/get-user",
           {
             method: "GET",
             headers: {

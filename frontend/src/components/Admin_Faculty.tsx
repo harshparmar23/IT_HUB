@@ -70,9 +70,7 @@ const Admin_Faculty = () => {
   const fetchFaculty = async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        "https://it-hub-iota.vercel.app/api/faculty"
-      );
+      const response = await fetch("http://localhost:5000/api/faculty");
       if (!response.ok) throw new Error("Failed to fetch faculty members");
 
       const data = await response.json();
@@ -101,9 +99,7 @@ const Admin_Faculty = () => {
 
   const fetchCourses = async () => {
     try {
-      const response = await fetch(
-        "https://it-hub-iota.vercel.app/api/courses"
-      );
+      const response = await fetch("http://localhost:5000/api/courses");
       if (!response.ok) throw new Error("Failed to fetch courses");
 
       const data = await response.json();
@@ -125,18 +121,15 @@ const Admin_Faculty = () => {
     }
 
     try {
-      const response = await fetch(
-        "https://it-hub-iota.vercel.app/api/faculty",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email,
-            courseIds: selectedCourses,
-            joinDate: newJoinDate || undefined,
-          }),
-        }
-      );
+      const response = await fetch("http://localhost:5000/api/faculty", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          courseIds: selectedCourses,
+          joinDate: newJoinDate || undefined,
+        }),
+      });
 
       const data = await response.json();
       if (!response.ok)
@@ -162,12 +155,9 @@ const Admin_Faculty = () => {
     if (!confirmDelete) return;
 
     try {
-      const response = await fetch(
-        `https://it-hub-iota.vercel.app/api/faculty/${id}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const response = await fetch(`http://localhost:5000/api/faculty/${id}`, {
+        method: "DELETE",
+      });
 
       if (!response.ok) throw new Error("Failed to delete faculty member");
 
@@ -212,7 +202,7 @@ const Admin_Faculty = () => {
 
     try {
       const response = await fetch(
-        `https://it-hub-iota.vercel.app/api/faculty/${selectedFaculty._id}`,
+        `http://localhost:5000/api/faculty/${selectedFaculty._id}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
