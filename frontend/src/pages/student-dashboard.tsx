@@ -84,7 +84,7 @@ const StudentDashboard = () => {
             to="/student-dashboard"
             className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
               isActive("/student-dashboard") &&
-              !isActive("/student-dashboard/profile") &&
+              // !isActive("/student-dashboard/profile") &&
               !isActive("/student-dashboard/material") &&
               !isActive("/student-dashboard/previous-papers")
                 ? "bg-blue-50 text-blue-600"
@@ -93,9 +93,9 @@ const StudentDashboard = () => {
             onClick={() => setMobileMenuOpen(false)}
           >
             <Home className="h-5 w-5" />
-            <span>Home</span>
+            <span>Profile</span>
           </Link>
-          <Link
+          {/* <Link
             to="/student-dashboard/profile"
             className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
               isActive("/student-dashboard/profile")
@@ -106,7 +106,7 @@ const StudentDashboard = () => {
           >
             <User className="h-5 w-5" />
             <span>Profile</span>
-          </Link>
+          </Link> */}
           <Link
             to="/student-dashboard/material"
             className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
