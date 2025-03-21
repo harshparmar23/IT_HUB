@@ -31,7 +31,7 @@ const requireAuth = async (req, res, next) => {
     }
 };
 
-// Function to determine role based on email
+// Function to determine user role based on email
 const determineRole = (email) => {
     if (email.endsWith('.it@ddu.ac.in')) {
         return 'faculty';
@@ -41,16 +41,23 @@ const determineRole = (email) => {
     return null;
 };
 
-// Google Sign-In Route
-router.post("/google-signin", requireAuth, async (req, res) => {
+// Google Sign-In route
+router.post("/google-signin", async (req, res) => {
     try {
-        const clerkUser = await clerkClient.users.getUser(req.userId);
-        const email = clerkUser.emailAddresses[0].emailAddress;
+        const { token } = req.body;
 
-        // First check if it's a DDU email
+        if (!token) {
+            return res.status(400).json({ message: "Token is required" });
+        }
+
+        // Verify the token with Clerk
+        const decodedToken = await clerkClient.verifyToken(token);
+        const { sub: userId, email } = decodedToken;
+
+        // First check if email is from DDU domain
         if (!email.endsWith('@ddu.ac.in')) {
             return res.status(403).json({
-                message: "Invalid email domain. Only @ddu.ac.in emails are allowed.",
+                message: "Access Denied: Only @ddu.ac.in emails are allowed"
             });
         }
 
@@ -58,38 +65,42 @@ router.post("/google-signin", requireAuth, async (req, res) => {
         const role = determineRole(email);
         if (!role) {
             return res.status(403).json({
-                message: "Invalid email format. Please use a valid DDU email address.",
+                message: "Invalid email format. Must be @ddu.ac.in or .it@ddu.ac.in"
             });
         }
 
-        // Check if user exists in the database
-        let user = await User.findOne({ email });
+        // Check if user exists in database
+        let user = await User.findOne({ clerkId: userId });
 
         if (!user) {
-            // Create new user with determined role
+            // User doesn't exist, create new user
             user = new User({
-                email,
-                role,
-                clerkId: clerkUser.id,
-                name: `${clerkUser.firstName} ${clerkUser.lastName}`,
-                profileImage: clerkUser.imageUrl,
-                joinDate: new Date(),
+                clerkId: userId,
+                email: email,
+                role: role,
+                joinDate: new Date()
             });
             await user.save();
         } else {
-            // If user exists but fields are not updated, update them
-            if (!user.clerkId || !user.name || !user.profileImage) {
-                user.clerkId = clerkUser.id;
-                user.name = `${clerkUser.firstName} ${clerkUser.lastName}`;
-                user.profileImage = clerkUser.imageUrl;
-                await user.save();
-            }
+            // Update existing user's information if needed
+            user.email = email;
+            user.role = role;
+            await user.save();
         }
 
-        res.status(200).json({ message: "User authenticated", user });
+        res.status(200).json({
+            message: "Sign in successful",
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                joinDate: user.joinDate
+            }
+        });
     } catch (error) {
-        console.error("Error authenticating user:", error);
-        res.status(500).json({ message: "Server Error", error });
+        console.error("Error in Google sign-in:", error);
+        res.status(500).json({ message: "Error during sign in" });
     }
 });
 
