@@ -37,26 +37,44 @@ router.get("/", async (req, res) => {
 })
 
 /**
- * @route GET /api/faculty/profile
+ * @route GET /api/faculty/profile/:userId
  * @desc Get faculty profile by clerkId
  */
 router.get("/profile/:userId", async (req, res) => {
     try {
         const { userId } = req.params;
+
+        // Get faculty profile with populated courses
         const faculty = await User.findOne({ clerkId: userId, role: "faculty" })
-            .populate("courseIds", "name description") // Populate course details
+            .populate("courseIds", "name description")
             .select("-__v");
 
         if (!faculty) {
             return res.status(404).json({ message: "Faculty not found" });
         }
 
-        // Format the response to include courses
+        // Calculate experience based on joinDate
+        const joinDate = faculty.joinDate || faculty.createdAt;
+        const yearsOfExperience = Math.floor(
+            (Date.now() - new Date(joinDate).getTime()) / (1000 * 60 * 60 * 24 * 365)
+        );
+
+        // Get faculty's materials count
+        const materialsCount = await Material.countDocuments({ facultyId: faculty._id });
+
+        // Get faculty's papers count
+        const papersCount = await PreviousYearPaper.countDocuments({ facultyId: faculty._id });
+
+        // Format the response
         const response = {
             faculty: {
                 ...faculty.toObject(),
+                experience: yearsOfExperience,
+                materialsCount,
+                papersCount,
                 courses: faculty.courseIds || [],
-            },
+                joinDate: joinDate
+            }
         };
 
         res.json(response);
@@ -64,7 +82,7 @@ router.get("/profile/:userId", async (req, res) => {
         console.error("Error fetching faculty profile:", error);
         res.status(500).json({ message: "Error fetching faculty profile" });
     }
-})
+});
 
 /**
  * @route PUT /api/faculty/:id

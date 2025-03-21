@@ -10,7 +10,6 @@ import {
   Menu,
   X,
   GraduationCap,
-  MessageSquare,
 } from "lucide-react";
 
 const FacultyDashboard = () => {

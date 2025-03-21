@@ -9,7 +9,7 @@ import {
 import { useAuth } from "@clerk/clerk-react";
 import { useEffect, useState } from "react";
 import Navbar from "./components/Navbar";
-import Chat from "./pages/Chat";
+// import Chat from "./pages/Chat";
 import PreviousPapers from "./pages/PreviousPapers";
 import Material from "./pages/Material";
 import About from "./pages/About";
