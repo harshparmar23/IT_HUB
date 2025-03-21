@@ -4,13 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/clerk-react";
 import { Badge } from "./ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import {
-  BookOpen,
-  FileText,
-  Clock,
-  GraduationCap,
-  Loader2,
-} from "lucide-react";
+import { BookOpen, FileText, GraduationCap, Loader2 } from "lucide-react";
 import axiosInstance from "../config/axios";
 import { API_ENDPOINTS } from "../config/api";
 
@@ -36,7 +30,7 @@ interface FacultyProfile {
 }
 
 const Faculty_profile = () => {
-  const { getToken, userId } = useAuth();
+  const { userId } = useAuth();
   const [profile, setProfile] = useState<FacultyProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
