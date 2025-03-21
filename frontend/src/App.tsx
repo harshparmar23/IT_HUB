@@ -28,7 +28,7 @@ import Student_PreviousPapers from "./components/Student_PreviousPapers";
 import Student_Profile from "./components/Student_Profile";
 import StudentDashboardPage from "./pages/student-dashboard";
 import FacultyDashboardPage from "./pages/faculty-dashboard";
-import StudentDashboardHome from "./components/StudentDashboard";
+// import StudentDashboardHome from "./components/StudentDashboard";
 import FacultyDashboardHome from "./components/FacultyDashboard";
 import AdminLayout from "./pages/admin-dashboard";
 import SignInPage from "./components/SignInPage";
@@ -227,7 +227,7 @@ const MainLayout = ({ user }: { user: User | null }) => {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<StudentDashboardHome />} />
+              <Route index element={<Student_Profile />} />
               <Route path="profile" element={<Student_Profile />} />
               <Route path="material" element={<Student_Material />} />
               <Route
