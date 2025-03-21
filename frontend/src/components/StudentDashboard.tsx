@@ -115,7 +115,7 @@ const StudentDashboard: React.FC = () => {
       </div>
 
       {/* Enrolled Courses */}
-      <Card className="mb-8 shadow-lg hover:shadow-xl transition-shadow duration-300">
+      {/* <Card className="mb-8 shadow-lg hover:shadow-xl transition-shadow duration-300">
         <CardHeader className="border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <div>
@@ -152,7 +152,7 @@ const StudentDashboard: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Course Progress */}
+      {/* Course Progress 
       <Card className="mb-8 shadow-lg hover:shadow-xl transition-shadow duration-300">
         <CardHeader className="border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
@@ -205,7 +205,7 @@ const StudentDashboard: React.FC = () => {
             ))}
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Recent Activity Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
