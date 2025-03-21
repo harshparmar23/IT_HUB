@@ -1,119 +1,91 @@
 import express from "express";
 import Course from "../models/Course.js";
-import { clerkClient } from "@clerk/clerk-sdk-node";
 
 const router = express.Router();
 
-// Middleware to verify Clerk authentication
-const requireAuth = async (req, res, next) => {
+// ✅ POST request - Add a new course
+router.post("/", async (req, res) => {
     try {
-        const token = req.headers.authorization?.split(" ")[1];
+        const { name } = req.body;
 
-        if (!token) {
-            return res.status(401).json({ message: "Unauthorized: No token provided" });
+        if (!name) {
+            return res.status(400).json({ message: "Course name is required" });
         }
 
-        const { sub: userId } = await clerkClient.verifyToken(token);
-
-        if (!userId) {
-            return res.status(401).json({ message: "Unauthorized: Invalid token" });
-        }
-
-        req.userId = userId;
-        next();
-    } catch (error) {
-        return res.status(401).json({ message: "Unauthorized: Token verification failed" });
-    }
-};
-
-// Get all courses
-router.get("/", requireAuth, async (req, res) => {
-    try {
-        const courses = await Course.find().select('-__v');
-        res.json(courses);
-    } catch (error) {
-        console.error("Error fetching courses:", error);
-        res.status(500).json({ message: "Error fetching courses" });
-    }
-});
-
-// Create a new course
-router.post("/", requireAuth, async (req, res) => {
-    try {
-        const { name, description } = req.body;
-
-        if (!name || !description) {
-            return res.status(400).json({ message: "Name and description are required" });
-        }
-
-        // Check if course with same name already exists
+        // Check if course already exists
         const existingCourse = await Course.findOne({ name });
         if (existingCourse) {
-            return res.status(400).json({ message: "Course with this name already exists" });
+            return res.status(400).json({ message: "Course already exists" });
         }
 
-        const course = new Course({
-            name,
-            description
-        });
+        const newCourse = new Course({ name });
+        await newCourse.save();
 
-        await course.save();
-        res.status(201).json(course);
+        res.status(201).json({ message: "Course created successfully", course: newCourse });
     } catch (error) {
-        console.error("Error creating course:", error);
-        res.status(500).json({ message: "Error creating course" });
+        res.status(500).json({ message: "Server error", error });
     }
 });
 
-// Update a course
-router.put("/:id", requireAuth, async (req, res) => {
+// ✅ GET request - Fetch all courses
+router.get("/", async (req, res) => {
     try {
-        const { name, description } = req.body;
-        const courseId = req.params.id;
+        const courses = await Course.find(); // Fetch all courses
+        res.json({ courses });
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching courses", error });
+    }
+});
 
-        if (!name || !description) {
-            return res.status(400).json({ message: "Name and description are required" });
+// ✅ PUT request - Update a course
+router.put("/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name } = req.body;
+
+        if (!name) {
+            return res.status(400).json({ message: "Course name is required" });
         }
 
-        // Check if another course with the same name exists
-        const existingCourse = await Course.findOne({
-            name,
-            _id: { $ne: courseId }
-        });
+        // Check if course exists
+        const course = await Course.findById(id);
+        if (!course) {
+            return res.status(404).json({ message: "Course not found" });
+        }
+
+        // Check if new name already exists
+        const existingCourse = await Course.findOne({ name, _id: { $ne: id } });
         if (existingCourse) {
-            return res.status(400).json({ message: "Course with this name already exists" });
+            return res.status(400).json({ message: "Course name already exists" });
         }
 
-        const course = await Course.findByIdAndUpdate(
-            courseId,
-            { name, description },
-            { new: true, runValidators: true }
-        );
+        // Update course
+        course.name = name;
+        await course.save();
 
-        if (!course) {
-            return res.status(404).json({ message: "Course not found" });
-        }
-
-        res.json(course);
+        res.json({ message: "Course updated successfully", course });
     } catch (error) {
-        console.error("Error updating course:", error);
-        res.status(500).json({ message: "Error updating course" });
+        res.status(500).json({ message: "Error updating course", error });
     }
 });
 
-// Delete a course
-router.delete("/:id", requireAuth, async (req, res) => {
+// ✅ DELETE request - Delete a course
+router.delete("/:id", async (req, res) => {
     try {
-        const course = await Course.findByIdAndDelete(req.params.id);
+        const { id } = req.params;
 
+        // Check if course exists
+        const course = await Course.findById(id);
         if (!course) {
             return res.status(404).json({ message: "Course not found" });
         }
+
+        // Delete course
+        await Course.findByIdAndDelete(id);
 
         res.json({ message: "Course deleted successfully" });
     } catch (error) {
-        console.error("Error deleting course:", error);
-        res.status(500).json({ message: "Error deleting course" });
+        res.status(500).json({ message: "Error deleting course", error });
     }
 });
 

@@ -3,9 +3,8 @@ export const API_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
 export const API_ENDPOINTS = {
   // Auth endpoints
   auth: {
-    login: `${API_BASE_URL}/auth/login`,
-    register: `${API_BASE_URL}/auth/register`,
-    profile: `${API_BASE_URL}/auth/profile`,
+    login: "/auth/google-signin",
+    logout: "/auth/logout",
   },
 
   // Course endpoints
@@ -18,26 +17,28 @@ export const API_ENDPOINTS = {
 
   // Faculty endpoints
   faculty: {
-    profile: (userId: string) => `${API_BASE_URL}/faculty/profile/${userId}`,
-    materials: (facultyId: string) =>
-      `${API_BASE_URL}/faculty/materials/${facultyId}`,
-    papers: (facultyId: string) =>
-      `${API_BASE_URL}/faculty/papers/${facultyId}`,
-    dashboard: (userId: string) =>
-      `${API_BASE_URL}/faculty/dashboard/${userId}`,
+    dashboard: (userId: string) => `/faculty/dashboard/${userId}`,
+    profile: (userId: string) => `/faculty/profile/${userId}`,
+    materials: (userId: string) => `/faculty/materials/${userId}`,
+    papers: (userId: string) => `/faculty/papers/${userId}`,
   },
 
   // Student endpoints
-  students: {
-    profile: (userId: string) => `${API_BASE_URL}/students/profile/${userId}`,
-    dashboard: (userId: string) =>
-      `${API_BASE_URL}/students/dashboard/${userId}`,
+  student: {
+    dashboard: (userId: string) => `/student/dashboard/${userId}`,
+    profile: (userId: string) => `/student/profile/${userId}`,
+    materials: (userId: string) => `/student/materials/${userId}`,
+    papers: (userId: string) => `/student/papers/${userId}`,
   },
 
   // Admin endpoints
   admin: {
-    dashboard: `${API_BASE_URL}/admin/dashboard`,
-    users: `${API_BASE_URL}/admin/users`,
+    dashboard: "/admin/dashboard",
+    students: "/admin/students",
+    faculty: "/admin/faculty",
+    materials: "/admin/materials",
+    papers: "/admin/papers",
+    courses: "/admin/courses",
   },
 
   // File upload endpoint

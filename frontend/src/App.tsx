@@ -22,7 +22,7 @@ import Admin_Course from "./components/Admin_Course";
 import Faculty_profile from "./components/Faculty_profile";
 import Faculty_material from "./components/Faculty_material";
 import Faculty_pervious from "./components/Faculty_previous";
-import Faculty_chat from "./components/Faculty_chat";
+// import Faculty_chat from "./components/Faculty_chat";
 import Student_Material from "./components/Student_Material";
 import Student_PreviousPapers from "./components/Student_PreviousPapers";
 import Student_Profile from "./components/Student_Profile";
@@ -32,6 +32,8 @@ import StudentDashboardHome from "./components/StudentDashboard";
 import FacultyDashboardHome from "./components/FacultyDashboard";
 import AdminLayout from "./pages/admin-dashboard";
 import SignInPage from "./components/SignInPage";
+import axiosInstance from "./config/axios";
+import { API_ENDPOINTS } from "./config/api";
 
 // Define User Type
 interface User {
@@ -51,29 +53,38 @@ function App() {
       try {
         setLoading(true);
         setError(null);
+
         const token = await getToken();
-        const response = await fetch(
-          "https://it-hub-iota.vercel.app/api/auth/google-signin",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        if (!token) {
+          throw new Error("No authentication token available");
+        }
 
-        const data = await response.json();
+        // Get user data from Clerk
+        const userData = await window.Clerk?.user;
+        if (!userData) {
+          throw new Error("No user data available");
+        }
 
-        if (response.ok) {
-          setUser(data.user); // Update user state
+        // Send the token and user data to backend
+        const response = await axiosInstance.post(API_ENDPOINTS.auth.login, {
+          token,
+          userData: {
+            clerkId: userData.id,
+            email: userData.primaryEmailAddress?.emailAddress,
+            name: `${userData.firstName} ${userData.lastName}`,
+          },
+        });
+
+        if (response.status === 200) {
+          setUser(response.data.user);
         } else {
-          setError(data.message);
-          console.error("Authentication failed:", data.message);
+          throw new Error(response.data.message || "Authentication failed");
         }
       } catch (error) {
         console.error("Error authenticating user:", error);
-        setError("An error occurred during authentication");
+        setError(
+          error instanceof Error ? error.message : "Authentication failed"
+        );
       } finally {
         setLoading(false);
       }
@@ -83,6 +94,7 @@ function App() {
       authenticateUser();
     } else {
       setLoading(false);
+      setUser(null);
     }
   }, [isSignedIn, getToken]);
 
@@ -96,9 +108,25 @@ function App() {
     );
   }
 
+  // Show error if authentication failed
+  if (error) {
+    return (
+      <div className="flex flex-col justify-center items-center h-screen">
+        <div className="text-red-500 text-xl mb-4">Authentication Error</div>
+        <p className="text-gray-600">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
     <Router>
-      <MainLayout user={user} error={error} />
+      <MainLayout user={user} />
     </Router>
   );
 }
@@ -144,13 +172,7 @@ const ProtectedRoute = ({
   return children;
 };
 
-const MainLayout = ({
-  user,
-  error,
-}: {
-  user: User | null;
-  error: string | null;
-}) => {
+const MainLayout = ({ user }: { user: User | null }) => {
   const location = useLocation();
   const shouldHideNavbar =
     location.pathname.startsWith("/admin-dashboard") ||
@@ -163,11 +185,6 @@ const MainLayout = ({
       {!shouldHideNavbar && <Navbar />}
       <main className="flex-grow p-6 pt-16 bg-gray-100">
         <div className="max-w-6xl mx-auto">
-          {error && (
-            <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-              {error}
-            </div>
-          )}
           <Routes>
             <Route
               path="/"
@@ -231,13 +248,13 @@ const MainLayout = ({
               <Route path="profile" element={<Faculty_profile />} />
               <Route path="material" element={<Faculty_material />} />
               <Route path="previous-papers" element={<Faculty_pervious />} />
-              <Route path="chat" element={<Faculty_chat />} />
+              {/* <Route path="chat" element={<Faculty_chat />} /> */}
             </Route>
 
-            <Route
+            {/* <Route
               path="/chat"
               element={user ? <Chat /> : <Navigate to="/sign-in" replace />}
-            />
+            /> */}
             <Route
               path="/previous-papers"
               element={

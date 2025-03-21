@@ -25,7 +25,7 @@ const FacultyDashboard = () => {
       try {
         const token = await getToken();
         const response = await fetch(
-          "https://it-hub-iota.vercel.app/api/auth/get-user",
+          `${import.meta.env.VITE_BACKEND_BASE_URL}/auth/get-user`,
           {
             method: "GET",
             headers: {
@@ -96,9 +96,9 @@ const FacultyDashboard = () => {
               isActive("/faculty-dashboard") &&
               !isActive("/faculty-dashboard/profile") &&
               !isActive("/faculty-dashboard/material") &&
-              !isActive("/faculty-dashboard/previous-papers") &&
-              !isActive("/faculty-dashboard/chat")
-                ? "bg-blue-50 text-blue-600"
+              !isActive("/faculty-dashboard/previous-papers")
+                ? // !isActive("/faculty-dashboard/chat")
+                  "bg-blue-50 text-blue-600"
                 : "text-gray-700 hover:bg-blue-50 hover:text-blue-600"
             }`}
             onClick={() => setMobileMenuOpen(false)}
@@ -142,7 +142,7 @@ const FacultyDashboard = () => {
             <BookOpen className="h-5 w-5" />
             <span>Previous Papers</span>
           </Link>
-          <Link
+          {/* <Link
             to="/faculty-dashboard/chat"
             className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
               isActive("/faculty-dashboard/chat")
@@ -150,10 +150,10 @@ const FacultyDashboard = () => {
                 : "text-gray-700 hover:bg-blue-50 hover:text-blue-600"
             }`}
             onClick={() => setMobileMenuOpen(false)}
-          >
-            <MessageSquare className="h-5 w-5" />
+          > */}
+          {/* <MessageSquare className="h-5 w-5" />
             <span>Chat</span>
-          </Link>
+          </Link> */}
 
           <button
             onClick={() => {

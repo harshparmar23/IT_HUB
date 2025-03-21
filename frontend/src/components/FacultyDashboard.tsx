@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@clerk/clerk-react";
-import axios from "axios";
 import {
   Card,
   CardContent,
@@ -16,6 +15,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { API_ENDPOINTS } from "../config/api";
+import axiosInstance from "../config/axios";
 
 interface Faculty {
   _id: string;
@@ -51,7 +51,7 @@ interface DashboardStats {
 }
 
 const Faculty_Dashboard: React.FC = () => {
-  const { userId, getToken } = useAuth();
+  const { userId } = useAuth();
   const [loading, setLoading] = useState(true);
   const [faculty, setFaculty] = useState<Faculty | null>(null);
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -66,13 +66,9 @@ const Faculty_Dashboard: React.FC = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const token = await getToken();
 
-        const response = await axios.get(
-          API_ENDPOINTS.faculty.dashboard(userId || ""),
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
+        const response = await axiosInstance.get(
+          API_ENDPOINTS.faculty.dashboard(userId || "")
         );
 
         setFaculty(response.data.faculty);
@@ -89,7 +85,7 @@ const Faculty_Dashboard: React.FC = () => {
     if (userId) {
       fetchDashboardData();
     }
-  }, [userId, getToken]);
+  }, [userId]);
 
   const formatExperience = (joinDate: string) => {
     const join = new Date(joinDate);

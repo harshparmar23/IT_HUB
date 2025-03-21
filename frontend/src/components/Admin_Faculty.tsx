@@ -71,7 +71,7 @@ const Admin_Faculty = () => {
     try {
       setLoading(true);
       const response = await fetch(
-        "https://it-hub-iota.vercel.app/api/faculty"
+        `${import.meta.env.VITE_BACKEND_BASE_URL}/faculty`
       );
       if (!response.ok) throw new Error("Failed to fetch faculty members");
 
@@ -102,7 +102,7 @@ const Admin_Faculty = () => {
   const fetchCourses = async () => {
     try {
       const response = await fetch(
-        "https://it-hub-iota.vercel.app/api/courses"
+        `${import.meta.env.VITE_BACKEND_BASE_URL}/courses`
       );
       if (!response.ok) throw new Error("Failed to fetch courses");
 
@@ -126,7 +126,7 @@ const Admin_Faculty = () => {
 
     try {
       const response = await fetch(
-        "https://it-hub-iota.vercel.app/api/faculty",
+        `${import.meta.env.VITE_BACKEND_BASE_URL}/faculty`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -163,7 +163,7 @@ const Admin_Faculty = () => {
 
     try {
       const response = await fetch(
-        `https://it-hub-iota.vercel.app/api/faculty/${id}`,
+        `${import.meta.env.VITE_BACKEND_BASE_URL}/faculty/${id}`,
         {
           method: "DELETE",
         }
@@ -212,7 +212,9 @@ const Admin_Faculty = () => {
 
     try {
       const response = await fetch(
-        `https://it-hub-iota.vercel.app/api/faculty/${selectedFaculty._id}`,
+        `${import.meta.env.VITE_BACKEND_BASE_URL}/faculty/${
+          selectedFaculty._id
+        }`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
