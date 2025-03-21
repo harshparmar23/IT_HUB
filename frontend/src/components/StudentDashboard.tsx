@@ -8,13 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "./ui/card";
-import {
-  BookOpen,
-  FileText,
-  GraduationCap,
-  Loader2,
-  BarChart3,
-} from "lucide-react";
+import { BookOpen, FileText, Loader2 } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -63,6 +57,7 @@ const StudentDashboard: React.FC = () => {
   const [courseProgress, setCourseProgress] = useState<CourseProgress[]>([]);
 
   useEffect(() => {
+    console.log(courseProgress);
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
