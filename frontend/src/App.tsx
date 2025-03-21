@@ -44,11 +44,13 @@ function App() {
   const { isSignedIn, isLoaded, getToken } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const authenticateUser = async () => {
       try {
         setLoading(true);
+        setError(null);
         const token = await getToken();
         const response = await fetch(
           "https://it-hub-iota.vercel.app/api/auth/google-signin",
@@ -66,10 +68,12 @@ function App() {
         if (response.ok) {
           setUser(data.user); // Update user state
         } else {
+          setError(data.message);
           console.error("Authentication failed:", data.message);
         }
       } catch (error) {
         console.error("Error authenticating user:", error);
+        setError("An error occurred during authentication");
       } finally {
         setLoading(false);
       }
@@ -94,7 +98,7 @@ function App() {
 
   return (
     <Router>
-      <MainLayout user={user} />
+      <MainLayout user={user} error={error} />
     </Router>
   );
 }
@@ -140,7 +144,13 @@ const ProtectedRoute = ({
   return children;
 };
 
-const MainLayout = ({ user }: { user: User | null }) => {
+const MainLayout = ({
+  user,
+  error,
+}: {
+  user: User | null;
+  error: string | null;
+}) => {
   const location = useLocation();
   const shouldHideNavbar =
     location.pathname.startsWith("/admin-dashboard") ||
@@ -153,6 +163,11 @@ const MainLayout = ({ user }: { user: User | null }) => {
       {!shouldHideNavbar && <Navbar />}
       <main className="flex-grow p-6 pt-16 bg-gray-100">
         <div className="max-w-6xl mx-auto">
+          {error && (
+            <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+              {error}
+            </div>
+          )}
           <Routes>
             <Route
               path="/"

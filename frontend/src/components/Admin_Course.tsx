@@ -1,171 +1,324 @@
-import { useEffect, useState } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../components/ui/table";
-import { Input } from "../components/ui/input";
-import { Button } from "../components/ui/button";
+import React, { useState, useEffect } from "react";
+import { useAuth } from "@clerk/clerk-react";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
+import { Loader2, Pencil, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../components/ui/dialog";
+} from "./ui/dialog";
+import { toast } from "sonner";
 
 interface Course {
   _id: string;
   name: string;
-  createdAt: string;
-  updatedAt: string;
+  description: string;
 }
 
-const Admin_Course = () => {
+const Admin_Course: React.FC = () => {
+  const { isSignedIn, getToken } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
-  const [filteredCourses, setFilteredCourses] = useState<Course[]>([]);
-  const [search, setSearch] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [newCourseName, setNewCourseName] = useState<string>("");
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-
-  useEffect(() => {
-    fetchCourses();
-  }, []);
+  const [newCourse, setNewCourse] = useState({ name: "", description: "" });
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const fetchCourses = async () => {
     try {
+      setLoading(true);
+      const token = await getToken();
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_BASE_URL}/courses`
+        `${import.meta.env.VITE_BACKEND_BASE_URL}/courses`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
-      if (!response.ok) throw new Error("Failed to fetch courses");
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch courses");
+      }
 
       const data = await response.json();
-      if (!Array.isArray(data.courses))
-        throw new Error("Invalid response format");
-
-      setCourses(data.courses);
-      setFilteredCourses(data.courses);
-    } catch (err: any) {
-      setError(err.message);
+      setCourses(data);
+    } catch (error) {
+      console.error("Error fetching courses:", error);
+      setError("Failed to load courses");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    const filtered = courses.filter((course) =>
-      course.name.toLowerCase().includes(search.toLowerCase())
-    );
-    setFilteredCourses(filtered);
-  }, [search, courses]);
+    if (isSignedIn) {
+      fetchCourses();
+    }
+  }, [isSignedIn]);
 
-  const handleAddCourse = async () => {
-    if (!newCourseName.trim()) return alert("Course name is required");
-
-    setIsSubmitting(true);
+  const handleAddCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
+      const token = await getToken();
       const response = await fetch(
         `${import.meta.env.VITE_BACKEND_BASE_URL}/courses`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: newCourseName }),
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(newCourse),
         }
       );
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "Failed to add course");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to add course");
+      }
 
-      alert("Course added successfully");
-      setNewCourseName("");
-      fetchCourses(); // Refresh course list
-    } catch (error: any) {
-      alert(error.message);
-    } finally {
-      setIsSubmitting(false);
+      const data = await response.json();
+      setCourses([...courses, data]);
+      setNewCourse({ name: "", description: "" });
+      toast.success("Course added successfully");
+    } catch (error) {
+      console.error("Error adding course:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to add course"
+      );
     }
   };
 
-  return (
-    <div className="p-6 bg-white shadow-lg rounded-lg">
-      <h1 className="text-2xl font-bold text-blue-600 mb-4">Courses</h1>
+  const handleEditCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCourse) return;
 
-      {/* Search Bar & Add Course Button */}
-      <div className="flex flex-col md:flex-row gap-4 mb-4">
-        <Input
-          type="text"
-          placeholder="Search courses..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full md:w-1/2"
-        />
-        {/* Add Course Button with Modal */}
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button className="bg-blue-600 text-white">Add Course</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Course</DialogTitle>
-            </DialogHeader>
-            <Input
-              type="text"
-              placeholder="Enter course name"
-              value={newCourseName}
-              onChange={(e) => setNewCourseName(e.target.value)}
-              className="mb-4"
-            />
-            <Button
-              className="w-full bg-blue-600 text-white"
-              onClick={handleAddCourse}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Adding..." : "Add Course"}
-            </Button>
-          </DialogContent>
-        </Dialog>
+    try {
+      const token = await getToken();
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_BASE_URL}/courses/${editingCourse._id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(editingCourse),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update course");
+      }
+
+      const updatedCourse = await response.json();
+      setCourses(
+        courses.map((course) =>
+          course._id === updatedCourse._id ? updatedCourse : course
+        )
+      );
+      setIsEditDialogOpen(false);
+      setEditingCourse(null);
+      toast.success("Course updated successfully");
+    } catch (error) {
+      console.error("Error updating course:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update course"
+      );
+    }
+  };
+
+  const handleDeleteCourse = async (courseId: string) => {
+    if (!window.confirm("Are you sure you want to delete this course?")) {
+      return;
+    }
+
+    try {
+      const token = await getToken();
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_BASE_URL}/courses/${courseId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to delete course");
+      }
+
+      setCourses(courses.filter((course) => course._id !== courseId));
+      toast.success("Course deleted successfully");
+    } catch (error) {
+      console.error("Error deleting course:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete course"
+      );
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
       </div>
+    );
+  }
 
-      {loading && <p className="text-gray-500">Loading courses...</p>}
-      {error && <p className="text-red-500">Error: {error}</p>}
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-red-500">{error}</div>
+      </div>
+    );
+  }
 
-      {!loading && !error && filteredCourses.length === 0 && (
-        <p className="text-gray-600">No courses found.</p>
-      )}
+  return (
+    <div className="container mx-auto p-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Manage Courses</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {/* Add Course Form */}
+          <form onSubmit={handleAddCourse} className="mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Input
+                  placeholder="Course Name"
+                  value={newCourse.name}
+                  onChange={(e) =>
+                    setNewCourse({ ...newCourse, name: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div>
+                <Input
+                  placeholder="Course Description"
+                  value={newCourse.description}
+                  onChange={(e) =>
+                    setNewCourse({ ...newCourse, description: e.target.value })
+                  }
+                  required
+                />
+              </div>
+            </div>
+            <Button type="submit" className="mt-4">
+              Add Course
+            </Button>
+          </form>
 
-      {!loading && !error && filteredCourses.length > 0 && (
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-1/5">Course ID</TableHead>
-                <TableHead className="w-2/5">Course Name</TableHead>
-                <TableHead className="w-1/5">Created At</TableHead>
-                <TableHead className="w-1/5">Updated At</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredCourses.map((course) => (
-                <TableRow key={course._id}>
-                  <TableCell>{course._id}</TableCell>
-                  <TableCell>{course.name}</TableCell>
-                  <TableCell>
-                    {new Date(course.createdAt).toLocaleString()}
-                  </TableCell>
-                  <TableCell>
-                    {new Date(course.updatedAt).toLocaleString()}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+          {/* Courses List */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {courses.map((course) => (
+              <Card key={course._id}>
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-semibold">{course.name}</h3>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {course.description}
+                      </p>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Dialog
+                        open={
+                          isEditDialogOpen && editingCourse?._id === course._id
+                        }
+                        onOpenChange={(open) => {
+                          setIsEditDialogOpen(open);
+                          if (!open) setEditingCourse(null);
+                        }}
+                      >
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setEditingCourse(course);
+                              setIsEditDialogOpen(true);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Edit Course</DialogTitle>
+                          </DialogHeader>
+                          <form
+                            onSubmit={handleEditCourse}
+                            className="space-y-4"
+                          >
+                            <div>
+                              <Input
+                                placeholder="Course Name"
+                                value={editingCourse?.name || ""}
+                                onChange={(e) =>
+                                  setEditingCourse({
+                                    ...editingCourse!,
+                                    name: e.target.value,
+                                  })
+                                }
+                                required
+                              />
+                            </div>
+                            <div>
+                              <Textarea
+                                placeholder="Course Description"
+                                value={editingCourse?.description || ""}
+                                onChange={(e) =>
+                                  setEditingCourse({
+                                    ...editingCourse!,
+                                    description: e.target.value,
+                                  })
+                                }
+                                required
+                              />
+                            </div>
+                            <div className="flex justify-end space-x-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                  setIsEditDialogOpen(false);
+                                  setEditingCourse(null);
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                              <Button type="submit">Save Changes</Button>
+                            </div>
+                          </form>
+                        </DialogContent>
+                      </Dialog>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteCourse(course._id)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
