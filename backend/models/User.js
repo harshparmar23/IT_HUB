@@ -2,21 +2,28 @@ import mongoose from "mongoose"
 
 const UserSchema = new mongoose.Schema(
     {
-        clerkId: { type: String }, // Clerk ID (nullable initially)
-        email: { type: String, required: true, unique: true }, // Must be pre-registered
-        name: { type: String }, // Updated after first sign-in
-        profileImage: { type: String }, // Profile picture URL (updated after first sign-in)
+        clerkId: {
+            type: String,
+            unique: true,
+            sparse: true, // This makes uniqueness apply only when clerkId is not null
+        },
+        email: {
+            type: String,
+            required: true,
+            unique: true,
+        },
+        name: { type: String },
+        profileImage: { type: String },
         role: {
             type: String,
             required: true,
-            enum: ["student", "faculty", "admin"], // Restrict roles
+            enum: ["student", "faculty", "admin"],
             default: "student",
         },
         joinDate: {
             type: Date,
-            default: Date.now, // Default to current date
+            default: Date.now,
         },
-        // Changed from single courseId to array of courseIds
         courseIds: [
             {
                 type: mongoose.Schema.Types.ObjectId,
@@ -29,4 +36,3 @@ const UserSchema = new mongoose.Schema(
 
 const User = mongoose.model("User", UserSchema)
 export default User
-
