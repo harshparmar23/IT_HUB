@@ -84,9 +84,31 @@ const SignInPage: React.FC = () => {
               <a href="#" className="text-blue-600 hover:underline">
                 Privacy Policy
               </a>
+              <br />
+              Scroll down
             </p>
           </div>
         </div>
+      </div>
+      <div>
+        <p className="text-center  mt-4">
+          You not able to sign in because you are not registered.First Admin has
+          to register you. Right now you can download the code from github and
+          run it locally I have already added .env.sample file you just need to
+          rename it to .env and add your Clerk API keys and Mongdb URL.
+          <span className="font-bold">
+            This is not a frontend website it is functional website
+          </span>
+          . If there is any issue you can contact me on my
+          <br />
+          <a
+            href="https://harshparmar.vercel.app/"
+            className="underline text-blue"
+            target="_blank"
+          >
+            here
+          </a>
+        </p>
       </div>
     </SignedOut>
   );
