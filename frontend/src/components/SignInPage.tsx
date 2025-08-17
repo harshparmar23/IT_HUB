@@ -102,7 +102,7 @@ const SignInPage: React.FC = () => {
           . If there is any issue you can contact me on my
           <br />
           <a
-            href="https://harshparmar.vercel.app/"
+            href="https://www.harshparmar.dev/#contact"
             className="underline text-blue"
             target="_blank"
           >
